@@ -17,6 +17,7 @@ Caso não funcione, instale o NVIDIA Toolkit. Tutorial de instalação disponív
 Para facilitar o setup e uso do programa, um arquivo "requirements.txt" foi adicionado. Primeiro, vá até o repositório e entre na pasta do Yolov8_Tracking.
 
 $ cd track-flow/
+
 $ cd Yolov8_Tracking/
 
 Em seguida, instale os requerimentos.
