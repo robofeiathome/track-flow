@@ -2,7 +2,6 @@ import rospy
 import cv2
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image
-import processing as pr
 import os
 import sys
 import platform
@@ -71,6 +70,5 @@ if __name__ == '__main__':
         image = image_receiver.get_image()
         if image is not None:
             img = image_receiver.preprocess(image)
-            return img
             #image_receiver.vide_show(img)
             # Process the image as needed
