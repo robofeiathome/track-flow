@@ -4,6 +4,8 @@
 
 Este programa utiliza a engine da YOLOv8 e oferece alguns programas de tracking, sendo definido por padrão como StrongSORT. Para a detecção, o programa utiliza o peso da YOLOv8 para segmentação por padrão, mas também é possível utilizar pesos de detecção normais ou pesos de segmentação personalizados, alterando o caminho e o nome do peso. Este método apresentou uma perda de ID menor em comparação com o DeepSORT, porém ainda não é perfeito e, às vezes, ocorre perda de ID.
 
+NOTA: Logo uma nova versão atualizada será adicionada no git, adicionando várias melhorias e funcionalidades, a principal dela sendo a compatibilidade com cameras em ros, com um método de camêra virtual, que não adiciona nenhum delay considerável.
+
 ## Instalação
 
 __Caso deseje usar uma GPU para rodar o programa, certifique-se de que seu CUDA esteja instalado e configurado corretamente.__ Para verificar se seu CUDA está instalado e qual a sua versão, rode o comando abaixo no terminal:
