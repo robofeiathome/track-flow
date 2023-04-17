@@ -40,11 +40,11 @@ $ pip install -r requirements.txt
 ```
 Agora, todos os pacotes para rodar o programa estão instalados.
 
-## Instalação para usar uma camera em ROS
+# Instalação para usar uma camera em ROS
 
 Pule isso caso vá utilizar apenas uma webcam.
 
-# Camera Virtual - v4l2loopback
+## Camera Virtual - v4l2loopback
 
 A instalação do modulo que cria a camera virtual no Linux é bem fácil. Primeiro atualize os pacotes do seu sistema:
 
@@ -73,14 +73,14 @@ Também adicinei um nome para camera, assim como, a resolução da camera.
 
 Pule isso caso vá utilizar apenas uma webcam.
 
-# Verifique o tópico da sua camera
+### Verifique o tópico da sua camera
 
 Após inicializar sua camera em ROS, certifique-se de qual o tópico ela está gerando e qual deles você deseja utilizar, a maioria das caneras retorna a imagem pura e uma imagem comprimida, aconselho a usar a imagem pura por ser mais fácil de trabalhar. Para listar os tópicos em ros que estão sendo publicados e verificar o tópico correto da sua camera, use o comando :
 
 ```
 $ rostopic list
 ```
-# Intalação
+### Intalação
 
 Para transformarmos o tópico da camera em uma "webcam" é necessário um meio de transformar essa imagem, para isso você pode usar algumas bibliotecas e tentar fazer por conta própria, porém existe um programa funcional que não adiciona nenhum delay considerável (no computador que testei, uma jetson agx xavier, usar esse metódo adicionou nos picos máximos um delay de 5ms e uma média de 3ms)
 Vou colocar aqui um guia de instalação passo a passo, mais caso prefira [aqui está o repo original](https://github.com/jgoppert/ros-virtual-cam).
