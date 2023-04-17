@@ -40,6 +40,71 @@ $ pip install -r requirements.txt
 ```
 Agora, todos os pacotes para rodar o programa estão instalados.
 
+## Instalação para usar uma camera em ROS
+
+Pule isso caso vá utilizar apenas uma webcam.
+
+# Camera Virtual - v4l2loopback
+
+A instalação do modulo que cria a camera virtual no Linux é bem fácil. Primeiro atualize os pacotes do seu sistema:
+
+```
+$ sudo apt-get update
+```
+Em seguida instale o módulo
+
+```
+$ sudo apt-get install v4l2loopback-dkms
+```
+
+Para usar a camera virtual primeiro é necessário criar uma. Primeiro verifique os dispositivos que já estão conectados, o próprio pacote oferece um meio de verificar:
+
+```
+$ v4l2-ctl --list-devices
+```
+Recomendo criar uma camera com um id diferente das existentes, por mais que possa funcionar, algumas vezes isso vai gerar conflitos que podem ser evitados. Para criar a camera basta um comando, nele você pode definir os parametros da camera, como o id, nome, tamanho, quantos dispositivos vão acessar essa camera, etc. Vou dar um exemplo aqui de como criar uma camera com o id 2, assim, nesse caso, quando eu for usar a camera, basta chamar no source, assim como, uma webcam: '2'
+
+```
+$ sudo modprobe v4l2loopback video_nr=2 card_label="RosCam" max_width=640 max_height=480
+```
+Também adicinei um nome para camera, assim como, a resolução da camera.
+
+## Escrita do tópico na camera
+
+Pule isso caso vá utilizar apenas uma webcam.
+
+# Verifique o tópico da sua camera
+
+Após inicializar sua camera em ROS, certifique-se de qual o tópico ela está gerando e qual deles você deseja utilizar, a maioria das caneras retorna a imagem pura e uma imagem comprimida, aconselho a usar a imagem pura por ser mais fácil de trabalhar. Para listar os tópicos em ros que estão sendo publicados e verificar o tópico correto da sua camera, use o comando :
+
+```
+$ rostopic list
+```
+# Intalação
+
+Para transformarmos o tópico da camera em uma "webcam" é necessário um meio de transformar essa imagem, para isso você pode usar algumas bibliotecas e tentar fazer por conta própria, porém existe um programa funcional que não adiciona nenhum delay considerável (no computador que testei, uma jetson agx xavier, usar esse metódo adicionou nos picos máximos um delay de 5ms e uma média de 3ms)
+Vou colocar aqui um guia de instalação passo a passo, mais caso prefira [aqui está o repo original](https://github.com/jgoppert/ros-virtual-cam).
+
+```
+$ cd seu_rep_onde_vai_utilizar_a_camera_em_ros/src
+$ mkdir ros/virtual-cam-ws/src -p #pode mudar o nome ou diminuir o caminho, por exemplo, tirando o ros/, funciona eu já testei :)
+$ cd ros/virtual-cam-ws/src
+$ git clone git@github.com:ixirobot/ros-virtual-cam.git virtual_cam
+$ catkin_init_workspace
+$ cd ..
+$ catkin_make
+```
+
+Agora que tudo estṕa instalado corretamente, certifique-se que você deu launch na sua camera, verifique se seu tópico esta sendo publicado, certifique-se que sua camera virtual foi criada, e então dê o seguinte comando no terminal para começar a subscrever o tópico na camera virtual:
+
+
+```
+#Exemplo
+$ rosrun virtual_cam stream _device:=/dev/video2 _width:=640 _height:=480 _fourcc:=YV12 image:=/my_camera/image
+```
+Em _device:= você vai colocar o caminho para a camera virtual, no caso essa é a com id 2, mas pode mudar de acordo com sua necessiade, _width e _height são o tamanho da imagem, _fourcc é o formato dos pixeis e image é o tópico da sua camera.
+
+
 ## Uso 
 
 Você pode rodar o programa de tracking de duas maneiras: pelo arquivo Python usando as configurações setadas nele, ou informando os parâmetros na linha de comando.
