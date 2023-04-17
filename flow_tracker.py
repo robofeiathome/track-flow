@@ -52,7 +52,7 @@ from trackers.multi_tracker_zoo import create_tracker
 #    return centroid_x, centroid_y
 
 def calculate_centroid_x(bbox):
-    x_min, y_min, x_max, y_max = bbox
+    x_min, _, x_max, _= bbox
     centroid_x = (x_min + x_max) / 2
     return centroid_x
 
