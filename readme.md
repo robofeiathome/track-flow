@@ -4,7 +4,7 @@
 
 Este programa utiliza a engine da YOLOv8 e oferece alguns programas de tracking, sendo definido por padrão como StrongSORT. Para a detecção, o programa utiliza o peso da YOLOv8 para segmentação por padrão, mas também é possível utilizar pesos de detecção normais ou pesos de segmentação personalizados, alterando o caminho e o nome do peso. Este método apresentou uma perda de ID menor em comparação com o DeepSORT, porém ainda não é perfeito e, às vezes, ocorre perda de ID.
 
-NOTA: Logo uma nova versão atualizada será adicionada no git, adicionando várias melhorias e funcionalidades, a principal dela sendo a compatibilidade com cameras em ros, com um método de camêra virtual, que não adiciona nenhum delay considerável.
+NOTA: Essa branch, ROS_integration além de já funcionar com uma ROScam está montado para funcionar como um ros package, não está completo ainda, o launch está funcionando, os nodes estão sendo inicializados corretamente, mas ainda preciso corrigir a mensagem com a bbox.
 
 ## Instalação
 
