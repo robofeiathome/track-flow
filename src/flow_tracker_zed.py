@@ -157,6 +157,7 @@ class Flow:
     ):
         direction='not_defined'
         val_correc=1.5 # valor de correcao, usar entre 0.5 e 2.5
+        previous_centroid_y = 387.54083195327223 # valor inicial do centroide (apenas para o primeiro frame a passar do flow, depois e corrigido)
         previous_centroid_x = 387.54083195327223 # valor inicial do centroide (apenas para o primeiro frame a passar do flow, depois e corrigido)
         source = str(source)
         save_img = not nosave and not source.endswith('.txt')  # save inference images
@@ -485,8 +486,8 @@ class Flow:
         check_requirements(requirements=ROOT / 'requirements.txt', exclude=('tensorboard', 'thop'))
         self.run(
             source='4',
-            yolo_weights=WEIGHTS / 'yolov8m.pt',  # model.pt path(s),
-            reid_weights=WEIGHTS / 'osnet_x0_25_msmt17.pt',  # model.pt path,
+            yolo_weights=WEIGHTS / 'yolov8s-seg.pt',  # model.pt path(s),
+            reid_weights=WEIGHTS / 'osnet_x1_0_msmt17.pt',  # model.pt path,
             tracking_method='strongsort',
             tracking_config='/home/robofei/Documents/xxx/src/follow_me/src/trackers/strongsort/configs/strongsort.yaml',
             imgsz=[640, 480],  # inference size (height, width)
