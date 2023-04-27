@@ -55,6 +55,7 @@ Em seguida instale o módulo
 
 ```
 $ sudo apt-get install v4l2loopback-dkms
+$ sudo apt-get install v4l-utils
 ```
 
 Para usar a camera virtual primeiro é necessário criar uma. Primeiro verifique os dispositivos que já estão conectados, o próprio pacote oferece um meio de verificar:
