@@ -80,6 +80,8 @@ class Flow:
         self.msg = dc_to_follow()
         self.time=rospy.Time.now()
         point_cloud_topic = '/zed_node/point_cloud/cloud_registered'
+        self.risk=0
+        self.zone=0
 
         self._tf_listener = tf.TransformListener()
         self._current_image = None
@@ -120,93 +122,97 @@ class Flow:
     def calculate_zone(self, cx):
         if cx is not None:    
             if cx >= 0 and cx <=128 :
-                zone=-4
+                self.zone=-4
             elif cx>128 and cx<256:
-                zone=-3
+                self.zone=-3
             elif cx>256 and cx<384:
-                zone=-2
+                self.zone=-2
             elif cx>384 and cx<512:
-                zone=-1
+                self.zone=-1
             elif cx>512 and cx<768:
-                zone=0
+                self.zone=0
             elif cx>768 and cx<896:
-                zone=1
+                self.zone=1
             elif cx>896 and cx<1024:
-                zone=2
+                self.zone=2
             elif cx>1024 and cx<1152:
-                zone=3
+                self.zone=3
             elif cx>1152 and cx<1280:
-                zone=4
+                self.zone=4
         else:
-            zone:5
+            self.zone:5
 
-        return zone
+        return self.zone
             
     
     def super_flow(self, dir, zone, prisk):
         direction=dir
         previous_risk = prisk
-        num=zone
-        if num == -4 and direction == 'left':
-            risk=-6
-        elif num == -4 and direction == 'right':
-            risk=-4
-        elif num == -4 and direction == 'forward':
-            risk=-5
-        elif num == -3 and direction == 'left':
-            risk=-5
-        elif num == -3 and direction == 'right':
-            risk=-3
-        elif num == -3 and direction == 'forward':
-            risk=-4
-        elif num == -2 and direction == 'left':
-            risk=-4
-        elif num == -2 and direction == 'right':
-            risk=-2
-        elif num == -2 and direction == 'forward':
-            risk=-3
-        elif num == -1 and direction == 'left':
-            risk=-3
-        elif num == -1 and direction == 'right':
-            risk=-1
-        elif num == -1 and direction == 'forward':
-            risk=-2
-        elif num == 0 and direction == 'left':
-            risk=0
-        elif num == 0 and direction == 'right':
-            risk=0
-        elif num == 0 and direction == 'forward':
-            risk=0
-        elif num == 1 and direction == 'left':
-            risk=1
-        elif num == 1 and direction == 'right':
-            risk=3
-        elif num == 1 and direction == 'forward':
-            risk=2
-        elif num == 2 and direction == 'left':
-            risk=2
-        elif num == 2 and direction == 'right':
-            risk=4
-        elif num == 2 and direction == 'forward':
-            risk=3
-        elif num == 3 and direction == 'left':
-            risk=3
-        elif num == 3 and direction == 'right':
-            risk=5
-        elif num == 3 and direction == 'forward':
-            risk=4
-        elif num == 4 and direction == 'left':
-            risk=4
-        elif num == 4 and direction == 'right':
-            risk=6
-        elif num == 4 and direction == 'forward':
-            risk=5
-        elif num == 5 :
-            risk=previous_risk
-        else:
-            print("Invalid number or direction")
+        num=self.zone
+        if self.zone is not None:
+                
+            if num == -4 and direction == 'left':
+                self.risk=-6
+            elif num == -4 and direction == 'right':
+                self.risk=-4
+            elif num == -4 and direction == 'forward':
+                self.risk=-5
+            elif num == -3 and direction == 'left':
+                self.risk=-5
+            elif num == -3 and direction == 'right':
+                self.risk=-3
+            elif num == -3 and direction == 'forward':
+                self.risk=-4
+            elif num == -2 and direction == 'left':
+                self.risk=-4
+            elif num == -2 and direction == 'right':
+                self.risk=-2
+            elif num == -2 and direction == 'forward':
+                self.risk=-3
+            elif num == -1 and direction == 'left':
+                self.risk=-3
+            elif num == -1 and direction == 'right':
+                self.risk=-1
+            elif num == -1 and direction == 'forward':
+                self.risk=-2
+            elif num == 0 and direction == 'left':
+                self.risk=0
+            elif num == 0 and direction == 'right':
+                self.risk=0
+            elif num == 0 and direction == 'forward':
+                self.risk=0
+            elif num == 1 and direction == 'left':
+                self.risk=1
+            elif num == 1 and direction == 'right':
+                self.risk=3
+            elif num == 1 and direction == 'forward':
+                self.risk=2
+            elif num == 2 and direction == 'left':
+                self.risk=2
+            elif num == 2 and direction == 'right':
+                self.risk=4
+            elif num == 2 and direction == 'forward':
+                self.risk=3
+            elif num == 3 and direction == 'left':
+                self.risk=3
+            elif num == 3 and direction == 'right':
+                self.risk=5
+            elif num == 3 and direction == 'forward':
+                self.risk=4
+            elif num == 4 and direction == 'left':
+                self.risk=4
+            elif num == 4 and direction == 'right':
+                self.risk=6
+            elif num == 4 and direction == 'forward':
+                self.risk=5
+            elif num == 5 :
+                self.risk=previous_risk
+            else:
+                print("Invalid number or direction")
+        else :
+            self.risk=0
 
-        return risk
+        return self.risk
 
     def run(
             self, 
@@ -419,7 +425,7 @@ class Flow:
                                 #pub.publish(bbox_values)
                                 current_centroid_x = int(self.calculate_centroid_x(bbox_values))
                                 current_centroid_y = int(self.calculate_centroid_y(bbox_values))
-                                zone= self.calculate_zone(current_centroid_x)
+                                self.zone= self.calculate_zone(current_centroid_x)
                                 # centroid_x_to_tf=
                                 # centroid_y_to_tf=
                                 print(f"Centroid_x for ID {id_to_find}: {current_centroid_x}")
@@ -439,9 +445,9 @@ class Flow:
                                     print(f'ID {id_to_find} not detected')
                                     direction=('unknow')
 
-                                risk= self.super_flow(direction, zone, previous_risk)
-                                print(f"risco atual = {risk}")
-                                previous_risk=risk
+                                self.risk= self.super_flow(direction, self.zone, previous_risk)
+                                print(f"risco atual = {self.risk}")
+                                previous_risk=self.risk
                                 # Update the previous centroid_x value for the ID
                                 previous_centroid_x = current_centroid_x
                                 previous_centroid_y = current_centroid_y
@@ -614,7 +620,7 @@ class Flow:
         )
 
 if __name__ == "__main__":
-    rospy.init_node('follow')
+    rospy.init_node('super_flow')
     
     try:
         Flow().main()

@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<launch>
+    <param name="/use_sim_time" value="true" />
+    
+    <node name="super_flow" pkg="follow_me" type="tst_super_flow.py" output="screen">
+    </node>
+
+
+</launch>

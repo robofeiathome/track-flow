@@ -46,7 +46,7 @@ from yolov8.ultralytics.yolo.utils.plotting import Annotator, colors, save_one_b
 from trackers.multi_tracker_zoo import create_tracker
 
 import rospy
-from follow_me.msg import direction as dc_to_follow
+from follow_me.msg import dc_to_follow
 from sensor_msgs import point_cloud2 as pc2
 from sensor_msgs.msg import PointCloud2
 
