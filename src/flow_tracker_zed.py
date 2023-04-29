@@ -46,7 +46,7 @@ from yolov8.ultralytics.yolo.utils.plotting import Annotator, colors, save_one_b
 from trackers.multi_tracker_zoo import create_tracker
 
 import rospy
-from follow_me.msg import coordinates_and_direction
+from follow_me.msg import direction as dc_to_follow
 from sensor_msgs import point_cloud2 as pc2
 from sensor_msgs.msg import PointCloud2
 
@@ -76,12 +76,10 @@ import traceback
 class Flow:
     def __init__(self):
         self._global_frame = 'zed2i_left_camera_frame'
-        self.pub = rospy.Publisher('p_to_follow', coordinates_and_direction, queue_size=10)
-        self.msg = coordinates_and_direction()
+        self.pub = rospy.Publisher('p_to_follow', dc_to_follow, queue_size=10)
+        self.msg = dc_to_follow()
         self.time=rospy.Time.now()
-        point_cloud_topic = '/zed2i/zed_node/point_cloud/cloud_registered'
-
-        self._global_frame = 'zed2i_camera_center'
+        point_cloud_topic = '/zed_node/point_cloud/cloud_registered'
 
         self._tf_listener = tf.TransformListener()
         self._current_image = None
@@ -329,9 +327,9 @@ class Flow:
                                 #pub.publish(bbox_values)
                                 current_centroid_x = int(self.calculate_centroid_x(bbox_values))
                                 current_centroid_y = int(self.calculate_centroid_y(bbox_values))
+                                # centroid_x_to_tf=
+                                # centroid_y_to_tf=
                                 print(f"Centroid_x for ID {id_to_find}: {current_centroid_x}")
-                                self.msg.x=current_centroid_x
-                                self.msg.y=current_centroid_y
 
                             #if id_to_find in previous_centroid_x:
                                 # Compare the current and previous centroid_x values
@@ -355,10 +353,7 @@ class Flow:
                                 #calculate_tf(current_centroid_x, current_centroid_y)
                             else:
                                 print(f'No bounding box found for ID {id_to_find}')
-                                self.msg.x=previous_centroid_x
-                                self.msg.y=previous_centroid_y
 
-                            (robot_trans, robot_rot) = self._tf_listener.lookupTransform('/zed2i_camera_center', '/base_link', rospy.Time(0))
                             (trans, _) = self._tf_listener.lookupTransform('/' + self._global_frame, '/zed2i_camera_center', rospy.Time(0))
 
                             if self._current_pc is None:
@@ -377,7 +372,7 @@ class Flow:
 
                             if publish_tf:
                                 # Object tf (x, y, z) must be passed as (z, -x, -y)
-                                object_tf = [point_z, point_x, -point_y]
+                                object_tf = [point_z, point_x, point_y]
                                 frame = 'zed2i_camera_center'
 
                                 # Translate the tf in regard to the fixed frame
@@ -391,10 +386,10 @@ class Flow:
                                                                 self.time,
                                                                 tf_id,
                                                                 frame)
-                                    self.time = self.time + rospy.Duration(1e-6)
+                                    self.time = self.time + rospy.Duration(1e-3)
                                     
                             
-                            #msg.z=
+                            #msg.direction=
                             self.msg.direction=direction
                             self.pub.publish(self.msg)
 
@@ -487,10 +482,10 @@ class Flow:
         self.run(
             source='4',
             yolo_weights=WEIGHTS / 'yolov8s-seg.pt',  # model.pt path(s),
-            reid_weights=WEIGHTS / 'osnet_x1_0_msmt17.pt',  # model.pt path,
+            reid_weights=WEIGHTS / 'resnet50_msmt17.pt',  # model.pt path,
             tracking_method='strongsort',
-            tracking_config='/home/robofei/Documents/xxx/src/follow_me/src/trackers/strongsort/configs/strongsort.yaml',
-            imgsz=[640, 480],  # inference size (height, width)
+            tracking_config='/home/robofei/Workspace/catkin_ws/src/3rd_party/Vision_System/track-flow/src/trackers/strongsort/configs/strongsort.yaml',
+            imgsz=[1280, 720],  # inference size (height, width)
             conf_thres=0.25,  # confidence threshold
             iou_thres=0.45,  # NMS IOU threshold
             max_det=1000,  # maximum detections per image
@@ -521,7 +516,6 @@ class Flow:
             
         )
 
-
 if __name__ == "__main__":
     rospy.init_node('follow')
     
@@ -529,4 +523,3 @@ if __name__ == "__main__":
         Flow().main()
     except KeyboardInterrupt:
         rospy.loginfo('Shutting down')
-    
