@@ -46,7 +46,7 @@ from yolov8.ultralytics.yolo.utils.plotting import Annotator, colors, save_one_b
 from trackers.multi_tracker_zoo import create_tracker
 
 import rospy
-from follow_me.msg import dc_to_follow
+from follow_me.msg import CoordBoxes
 from sensor_msgs import point_cloud2 as pc2
 from sensor_msgs.msg import PointCloud2
 
@@ -76,8 +76,8 @@ import traceback
 class Flow:
     def __init__(self):
         self._global_frame = 'zed2i_left_camera_frame'
-        self.pub = rospy.Publisher('p_to_follow', dc_to_follow, queue_size=10)
-        self.msg = dc_to_follow()
+        self.pub = rospy.Publisher('super_flow', CoordBoxes, queue_size=10)
+        self.msg = CoordBoxes()
         self.time=rospy.Time.now()
         point_cloud_topic = '/zed_node/point_cloud/cloud_registered'
         self.risk=0
@@ -493,6 +493,7 @@ class Flow:
                             
                             #msg.direction=
                             self.msg.direction=direction
+                            self.msg.risk= self.risk
                             self.pub.publish(self.msg)
 
                             if save_txt:
