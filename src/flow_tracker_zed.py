@@ -91,7 +91,6 @@ class Flow:
 
         # Publisher for frames with detected objects
         self._imagepub = rospy.Publisher('~objects_label', Image, queue_size=10)
-
         if point_cloud_topic is not None:
             rospy.Subscriber(point_cloud_topic, PointCloud2, self.pc_callback)
         else:
@@ -427,6 +426,7 @@ class Flow:
                 im0 = annotator.result()
                 # Flow results
                 direction_text = f'Direction: {direction}'
+                self._imagepub.publish(self._bridge.cv2_to_imgmsg(im0, 'bgr8'))
                 cv2.putText(im0, direction_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
                 if show_vid:
                     if platform.system() == 'Linux' and p not in windows:
@@ -490,7 +490,7 @@ class Flow:
             iou_thres=0.45,  # NMS IOU threshold
             max_det=1000,  # maximum detections per image
             device='0',  # cuda device, i.e. 0 or 0,1,2,3 or cpu
-            show_vid=True,  # show results
+            show_vid=False,  # show results
             save_txt=False,  # save results to *.txt
             save_conf=False,  # save confidences in --save-txt labels
             save_crop=False,  # save cropped prediction boxes
