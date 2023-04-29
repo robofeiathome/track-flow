@@ -1,0 +1,3 @@
+src/weights
+src/trackers/__pycache__
+src/yolov8/ultralytics/__pycache__
