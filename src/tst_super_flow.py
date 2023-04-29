@@ -46,7 +46,7 @@ from yolov8.ultralytics.yolo.utils.plotting import Annotator, colors, save_one_b
 from trackers.multi_tracker_zoo import create_tracker
 
 import rospy
-from follow_me.msg import CoordBoxes
+from follow_me.msg import riskanddirection
 from sensor_msgs import point_cloud2 as pc2
 from sensor_msgs.msg import PointCloud2
 
@@ -76,8 +76,8 @@ import traceback
 class Flow:
     def __init__(self):
         self._global_frame = 'zed2i_left_camera_frame'
-        self.pub = rospy.Publisher('super_flow', CoordBoxes, queue_size=10)
-        self.msg = CoordBoxes()
+        self.pub = rospy.Publisher('super_flow', riskanddirection, queue_size=10)
+        self.msg = riskanddirection()
         self.time=rospy.Time.now()
         point_cloud_topic = '/zed_node/point_cloud/cloud_registered'
         self.risk=0
@@ -253,6 +253,7 @@ class Flow:
         direction='not_defined'
         val_correc=1.5 # valor de correcao, usar entre 0.5 e 2.5
         previous_centroid_y = 387.54083195327223 # valor inicial do centroide (apenas para o primeiro frame a passar do flow, depois e corrigido)
+        current_centroid_x = 387.54083195327223 # valor inicial do centroide (apenas para o primeiro frame a passar do flow, depois e corrigido)
         previous_centroid_x = 387.54083195327223 # valor inicial do centroide (apenas para o primeiro frame a passar do flow, depois e corrigido)
         previous_risk=0 #valor inicial do risco apenas para o primeiro frame
         source = str(source)
@@ -585,8 +586,8 @@ class Flow:
         check_requirements(requirements=ROOT / 'requirements.txt', exclude=('tensorboard', 'thop'))
         self.run(
             source='4',
-            yolo_weights=WEIGHTS / 'yolov8s-seg.pt',  # model.pt path(s),
-            reid_weights=WEIGHTS / 'resnet50_msmt17.pt',  # model.pt path,
+            yolo_weights=WEIGHTS / 'yolov8n.pt',  # model.pt path(s),
+            reid_weights=WEIGHTS / 'osnet_x1_0_msmt17.pt',  # model.pt path,
             tracking_method='strongsort',
             tracking_config='/home/robofei/Workspace/catkin_ws/src/3rd_party/Vision_System/track-flow/src/trackers/strongsort/configs/strongsort.yaml',
             imgsz=[1280, 720],  # inference size (height, width)

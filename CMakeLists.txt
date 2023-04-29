@@ -15,6 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
   cv_bridge
   message_filters
+  sensor_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -53,8 +54,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate messages in the 'msg' folder
 add_message_files(
   FILES
-  CoordBoxes.msg
-  DicBoxes.msg
+  riskanddirection.msg
   dc_to_follow.msg
 )
 

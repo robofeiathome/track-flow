@@ -1,4 +1,3 @@
 #Flow direction
-
 string direction #direction
-Int32 risk #risk
+std_msgs/Int32 risk #risk
