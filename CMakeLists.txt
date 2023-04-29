@@ -54,7 +54,8 @@ find_package(catkin REQUIRED COMPONENTS
 add_message_files(
   FILES
   CoordBoxes.msg
-  DicBoxes.msg
+  DicBoxes.ms
+  dc_to_follow.msg
 )
 
 ## Generate services in the 'srv' folder
