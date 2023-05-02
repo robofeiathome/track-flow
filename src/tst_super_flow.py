@@ -76,7 +76,7 @@ import traceback
 class Flow:
     def __init__(self):
         self._global_frame = 'zed2i_left_camera_frame'
-        self.pub = rospy.Publisher('super_flow', riskanddirection, queue_size=10)
+        self.pub = rospy.Publisher('riskanddirection', riskanddirection, queue_size=10)
         self.msg = riskanddirection()
         self.time=rospy.Time.now()
         point_cloud_topic = '/zed_node/point_cloud/cloud_registered'
@@ -493,7 +493,7 @@ class Flow:
                                     self.time = self.time + rospy.Duration(1e-3)
                                     
                             
-                            #msg.direction=
+                            #msg.riskanddirection=
                             self.msg.direction=direction
                             self.msg.risk= self.risk
                             self.pub.publish(self.msg)
