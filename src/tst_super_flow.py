@@ -82,6 +82,7 @@ class Flow:
         point_cloud_topic = '/zed_node/point_cloud/cloud_registered'
         self.risk=0
         self.zone=0
+        self.publish_tf=None
 
         self._tf_listener = tf.TransformListener()
         self._current_image = None
@@ -155,55 +156,55 @@ class Flow:
                 self.risk=-6
             elif num == -4 and direction == 'right':
                 self.risk=-4
-            elif num == -4 and direction == 'forward':
+            elif num == -4 and direction == 'foward':
                 self.risk=-5
             elif num == -3 and direction == 'left':
                 self.risk=-5
             elif num == -3 and direction == 'right':
                 self.risk=-3
-            elif num == -3 and direction == 'forward':
+            elif num == -3 and direction == 'foward':
                 self.risk=-4
             elif num == -2 and direction == 'left':
                 self.risk=-4
             elif num == -2 and direction == 'right':
                 self.risk=-2
-            elif num == -2 and direction == 'forward':
+            elif num == -2 and direction == 'foward':
                 self.risk=-3
             elif num == -1 and direction == 'left':
                 self.risk=-3
             elif num == -1 and direction == 'right':
                 self.risk=-1
-            elif num == -1 and direction == 'forward':
+            elif num == -1 and direction == 'foward':
                 self.risk=-2
             elif num == 0 and direction == 'left':
                 self.risk=0
             elif num == 0 and direction == 'right':
                 self.risk=0
-            elif num == 0 and direction == 'forward':
+            elif num == 0 and direction == 'foward':
                 self.risk=0
             elif num == 1 and direction == 'left':
                 self.risk=1
             elif num == 1 and direction == 'right':
                 self.risk=3
-            elif num == 1 and direction == 'forward':
+            elif num == 1 and direction == 'foward':
                 self.risk=2
             elif num == 2 and direction == 'left':
                 self.risk=2
             elif num == 2 and direction == 'right':
                 self.risk=4
-            elif num == 2 and direction == 'forward':
+            elif num == 2 and direction == 'foward':
                 self.risk=3
             elif num == 3 and direction == 'left':
                 self.risk=3
             elif num == 3 and direction == 'right':
                 self.risk=5
-            elif num == 3 and direction == 'forward':
+            elif num == 3 and direction == 'foward':
                 self.risk=4
             elif num == 4 and direction == 'left':
                 self.risk=4
             elif num == 4 and direction == 'right':
                 self.risk=6
-            elif num == 4 and direction == 'forward':
+            elif num == 4 and direction == 'foward':
                 self.risk=5
             elif num == 5 :
                 self.risk=previous_risk
@@ -469,11 +470,11 @@ class Flow:
                                                 uvs=[(current_centroid_x, current_centroid_y)]))
 
                             if len(pc_list) > 0:
-                                publish_tf = True
+                                self.publish_tf = True
                                 tf_id = 'person_follow'
                                 point_z, point_x, point_y = pc_list[0]
 
-                            if publish_tf:
+                            if self.publish_tf:
                                 # Object tf (x, y, z) must be passed as (z, -x, -y)
                                 object_tf = [point_z, point_x, point_y]
                                 frame = 'zed2i_camera_center'
