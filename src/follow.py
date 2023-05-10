@@ -10,6 +10,7 @@ import rospy
 import csv
 from geometry_msgs.msg import PoseStamped, Twist
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
+import tf2_ros
 
 from robot_nav.srv import FollowWaypointsService
 from std_msgs.msg import String
@@ -30,6 +31,13 @@ class Follow:
 
         self.waypoints = collections.deque()
 
+        # Create a TF buffer and listener
+        self.tf_buffer = tf2_ros.Buffer()
+        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
+        
+        # Name of the TF frame to follow
+        self.target_frame = rospy.get_param("~target_frame", "target_frame")
+
         # Read parameters off the parameter server --------------------------------------------
         self.name = rospy.get_param("~path_waypoints")
         self.index = rospy.get_param("~init", 30)
@@ -38,7 +46,6 @@ class Follow:
         self.actual_xy_goal_tolerance = rospy.get_param("~xy_goal_tolerance", 0.4)
         self.actual_yaw_goal_tolerance = rospy.get_param("~yaw_goal_tolerance", 3.14)
         self.distance_tolerance = rospy.get_param("waypoint_distance_tolerance", 0.0)
-
 
         # Is the path provided by the user ready to follow?
         self.vel_msg = Twist()
@@ -70,7 +77,29 @@ class Follow:
 
         self.rate.sleep()
 
-    # helper methods
+    def add_tf_as_waypoint(self):
+        try:
+            transform = self.tf_buffer.lookup_transform(self.frame_id, self.target_frame, rospy.Time(0), rospy.Duration(1.0))
+            new_waypoint = [
+                transform.transform.translation.x,
+                transform.transform.translation.y,
+                transform.transform.translation.z,
+                transform.transform.rotation.x,
+                transform.transform.rotation.y,
+                transform.transform.rotation.z,
+                transform.transform.rotation.w
+            ]
+            
+            with open(self.file_path, "a") as csv_file:
+                csv_writer = csv.writer(csv_file)
+                csv_writer.writerow(new_waypoint)
+            
+            return new_waypoint
+        
+        except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
+            warn("TF lookup failed: %s" % str(e))
+            return None
+        # helper methods
     def send_move_base_goal(self, poses):
         """Assemble and send a new goal to move_base"""
         goal = MoveBaseGoal()
@@ -153,6 +182,10 @@ class Follow:
     def run(self):
         info("run ...")
         while not rospy.is_shutdown():
+            new_waypoint = self.add_tf_as_waypoint()
+            if new_waypoint:
+                self.coord.append(new_waypoint)
+                self.coord_all.append(new_waypoint)
             self.run_once()
 
     def stop(self):
@@ -189,3 +222,4 @@ if __name__ == "__main__":
         rospy.spin()
     except rospy.ROSInterruptException:
         pass
+
