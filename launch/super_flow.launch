@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<launch>
+    <param name="/use_sim_time" value="true" />
+    
+    <node name="super_flow" pkg="follow_me" type="tst_super_flow.py" output="screen">
+    </node>
+    
+   <node name="follow_waypoints" pkg="robot_nav" type="follow.py" output="screen"> 
+    <param name="init" value="1"/> <!--Init always (1) never (0)--> 
+    <param name="goal_frame_id" value="map"/>
+    <param name="wait_duration" value="0.0"/>
+    <param name="xy_goal_tolerance" value="0.2"/>
+    <param name="yaw_goal_tolerance" value="3.14"/>
+    <param name="path_waypoints" value="$(arg map_name)"/>
+    <param name="waypoint_distance_tolerance" value="0.0"/>
+  </node>
+
+
+</launch>
