@@ -36,7 +36,7 @@ class Follow:
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
         
         # TF frame to follow
-        self.target_frame = rospy.get_param("~target_frame", "target_frame")
+        self.target_frame = rospy.get_param("~person_follow", "base_footprint")
 
         # Read parameters off the parameter server --------------------------------------------
         self.name = rospy.get_param("~path_waypoints")
