@@ -83,6 +83,8 @@ class Flow:
         self.risk=0
         self.zone=0
         self.publish_tf=None
+        self.current_centoir_x = 0
+        self.current_centoir_y = 0
 
         self._tf_listener = tf.TransformListener()
         self._current_image = None
@@ -254,7 +256,7 @@ class Flow:
         direction='not_defined'
         val_correc=1.5 # valor de correcao, usar entre 0.5 e 2.5
         previous_centroid_y = 387.54083195327223 # valor inicial do centroide (apenas para o primeiro frame a passar do flow, depois e corrigido)
-        current_centroid_x = 387.54083195327223 # valor inicial do centroide (apenas para o primeiro frame a passar do flow, depois e corrigido)
+        self.current_centoir_x = 387.54083195327223 # valor inicial do centroide (apenas para o primeiro frame a passar do flow, depois e corrigido)
         previous_centroid_x = 387.54083195327223 # valor inicial do centroide (apenas para o primeiro frame a passar do flow, depois e corrigido)
         previous_risk=0 #valor inicial do risco apenas para o primeiro frame
         source = str(source)
@@ -425,22 +427,22 @@ class Flow:
                             if id_to_find in bbox_dict:
                                 bbox_values = bbox_dict[id_to_find][-1]  # Get the last entry in the list for the ID
                                 #pub.publish(bbox_values)
-                                current_centroid_x = int(self.calculate_centroid_x(bbox_values))
-                                current_centroid_y = int(self.calculate_centroid_y(bbox_values))
-                                self.zone= self.calculate_zone(current_centroid_x)
+                                self.current_centoir_x = int(self.calculate_centroid_x(bbox_values))
+                                self.current_centoir_y = int(self.calculate_centroid_y(bbox_values))
+                                self.zone= self.calculate_zone(self.current_centoir_x)
                                 # centroid_x_to_tf=
                                 # centroid_y_to_tf=
-                                print(f"Centroid_x for ID {id_to_find}: {current_centroid_x}")
+                                print(f"Centroid_x for ID {id_to_find}: {self.current_centoir_x}")
 
                             #if id_to_find in previous_centroid_x:
                                 # Compare the current and previous centroid_x values
-                                if current_centroid_x-previous_centroid_x <val_correc and  current_centroid_x-previous_centroid_x > -val_correc :
+                                if self.current_centoir_x-previous_centroid_x <val_correc and  self.current_centoir_x-previous_centroid_x > -val_correc :
                                     print(f'ID {id_to_find} is moving foward')
                                     direction=('foward')
-                                elif current_centroid_x > previous_centroid_x:
+                                elif self.current_centoir_x > previous_centroid_x:
                                     print(f'ID {id_to_find} is moving right')
                                     direction=('right')
-                                elif current_centroid_x < previous_centroid_x:
+                                elif self.current_centoir_x < previous_centroid_x:
                                     print(f'ID {id_to_find} is moving left')
                                     direction=('left')
                                 else:
@@ -451,10 +453,10 @@ class Flow:
                                 print(f"risco atual = {self.risk}")
                                 previous_risk=self.risk
                                 # Update the previous centroid_x value for the ID
-                                previous_centroid_x = current_centroid_x
-                                previous_centroid_y = current_centroid_y
+                                previous_centroid_x = self.current_centoir_x
+                                previous_centroid_y = self.current_centoir_y
                                 
-                                #calculate_tf(current_centroid_x, current_centroid_y)
+                                #calculate_tf(self.current_centoir_x, self.current_centoir_y)
                             else:
                                 print(f'No bounding box found for ID {id_to_find}')
 
@@ -467,7 +469,7 @@ class Flow:
                                 pc2.read_points(self._current_pc,
                                                 skip_nans=True,
                                                 field_names=('x', 'y', 'z'),
-                                                uvs=[(current_centroid_x, current_centroid_y)]))
+                                                uvs=[(self.current_centoir_x, self.current_centoir_y)]))
 
                             if len(pc_list) > 0:
                                 self.publish_tf = True
@@ -494,8 +496,8 @@ class Flow:
                                     
                             
                             #msg.riskanddirection=
-                            self.msg.direction=direction
-                            self.msg.risk= self.risk
+                            self.msg.direction = direction
+                            self.msg.risk.data = self.risk
                             self.pub.publish(self.msg)
 
                             if save_txt:
