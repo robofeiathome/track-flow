@@ -31,11 +31,11 @@ class Follow:
 
         self.waypoints = collections.deque()
 
-        # Create a TF buffer and listener
+        # Create listener
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
         
-        # Name of the TF frame to follow
+        # TF frame to follow
         self.target_frame = rospy.get_param("~target_frame", "target_frame")
 
         # Read parameters off the parameter server --------------------------------------------
