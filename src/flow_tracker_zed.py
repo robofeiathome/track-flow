@@ -353,7 +353,7 @@ class Flow:
                             else:
                                 print(f'No bounding box found for ID {id_to_find}')
 
-                            (trans, _) = self._tf_listener.lookupTransform('/' + self._global_frame, '/zed2i_camera_center', rospy.Time(0))
+                            (trans, _) = self._tf_listener.lookupTransform('/' + self._global_frame, '/zed_camera_center', rospy.Time(0))
 
                             if self._current_pc is None:
                                 rospy.loginfo('No point cloud')
@@ -372,7 +372,7 @@ class Flow:
                             if publish_tf:
                                 # Object tf (x, y, z) must be passed as (z, -x, -y)
                                 object_tf = [point_z, point_x, point_y]
-                                frame = 'zed2i_camera_center'
+                                frame = 'zed_camera_center'
 
                                 # Translate the tf in regard to the fixed frame
                                 if self._global_frame is not None:

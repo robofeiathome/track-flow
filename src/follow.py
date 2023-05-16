@@ -12,7 +12,7 @@ from geometry_msgs.msg import PoseStamped, Twist
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 import tf2_ros
 
-from robot_nav.srv import FollowWaypointsService
+from follow_me.srv import FollowWaypointsService
 from std_msgs.msg import String
 
 # Miscellaneous functions
@@ -32,20 +32,20 @@ class Follow:
         self.waypoints = collections.deque()
 
         # Create listener
-        self.tf_buffer = tf2_ros.Buffer()
-        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
+#        self.tf_buffer = tf2_ros.Buffer()
+#        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
         
         # TF frame to follow
-        self.target_frame = rospy.get_param("~person_follow", "base_footprint")
+#        self.target_frame = "base_footprint"
 
         # Read parameters off the parameter server --------------------------------------------
-        self.name = rospy.get_param("~path_waypoints")
-        self.index = rospy.get_param("~init", 30)
-        self.frame_id = rospy.get_param("goal_frame_id", "map")
-        self.wait_duration = rospy.get_param("wait_duration", 0.2)
-        self.actual_xy_goal_tolerance = rospy.get_param("~xy_goal_tolerance", 0.4)
-        self.actual_yaw_goal_tolerance = rospy.get_param("~yaw_goal_tolerance", 3.14)
-        self.distance_tolerance = rospy.get_param("waypoint_distance_tolerance", 0.0)
+        self.index = 1
+        self.frame_id = "map"
+        self.wait_duration = 0.2
+        self.actual_xy_goal_tolerance = 0.4
+        self.actual_yaw_goal_tolerance = 3.14
+        self.distance_tolerance = 0.0
+        self.file_path = '/home/robofei/Workspace/catkin_ws/src/3rd_party/Vision_System/track-flow/src/follow_utils/waypoints.csv'
 
         # Is the path provided by the user ready to follow?
         self.vel_msg = Twist()
@@ -77,29 +77,30 @@ class Follow:
 
         self.rate.sleep()
 
-    def add_tf_as_waypoint(self):
-        try:
-            transform = self.tf_buffer.lookup_transform(self.frame_id, self.target_frame, rospy.Time(0), rospy.Duration(1.0))
-            new_waypoint = [
-                transform.transform.translation.x,
-                transform.transform.translation.y,
-                transform.transform.translation.z,
-                transform.transform.rotation.x,
-                transform.transform.rotation.y,
-                transform.transform.rotation.z,
-                transform.transform.rotation.w
-            ]
+    # def add_tf_as_waypoint(self):
+    #     try:
+    #         transform = self.tf_buffer.lookup_transform(self.frame_id, self.target_frame, rospy.Time(0), rospy.Duration(1.0))
+    #         new_waypoint = [
+    #             transform.transform.translation.x,
+    #             transform.transform.translation.y,
+    #             transform.transform.translation.z,
+    #             transform.transform.rotation.x,
+    #             transform.transform.rotation.y,
+    #             transform.transform.rotation.z,
+    #             transform.transform.rotation.w
+    #         ]
             
-            with open(self.file_path, "a") as csv_file:
-                csv_writer = csv.writer(csv_file)
-                csv_writer.writerow(new_waypoint)
+    #         with open(self.file_path, "a") as csv_file:
+    #             csv_writer = csv.writer(csv_file)
+    #             csv_writer.writerow(new_waypoint)
             
-            return new_waypoint
+    #         return new_waypoint
         
-        except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
-            warn("TF lookup failed: %s" % str(e))
-            return None
-        # helper methods
+    #     except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
+    #         warn("TF lookup failed: %s" % str(e))
+    #         return None
+        
+    # helper methods
     def send_move_base_goal(self, poses):
         """Assemble and send a new goal to move_base"""
         goal = MoveBaseGoal()
@@ -115,6 +116,7 @@ class Follow:
 
     def run_once(self):
         """Single iteration of the node loop."""
+        self.add_waypoints(self.coord, self.waypoints)
 
         if len(self.coord) == 0:
             warn("Loop Follow Start")
@@ -182,10 +184,10 @@ class Follow:
     def run(self):
         info("run ...")
         while not rospy.is_shutdown():
-            new_waypoint = self.add_tf_as_waypoint()
-            if new_waypoint:
-                self.coord.append(new_waypoint)
-                self.coord_all.append(new_waypoint)
+            #new_waypoint = self.add_waypoints()
+            #if new_waypoint:
+            #    self.coord.append(new_waypoint)
+            #    self.coord_all.append(new_waypoint)
             self.run_once()
 
     def stop(self):
