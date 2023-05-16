@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+#Author: Mateus S
+#If need help contact : mateus.scarpelli03@gmail.com
+
 import argparse
 import cv2
 import os
