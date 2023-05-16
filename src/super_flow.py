@@ -78,14 +78,17 @@ import traceback
 
 class Flow:
     def __init__(self):
+        self.current_centroid_x=0
+        self.current_centroid_y=0
         self._global_frame = 'zed2i_left_camera_frame'
         self.pub = rospy.Publisher('riskanddirection', riskanddirection, queue_size=10)
         self.msg = riskanddirection()
         self.time=rospy.Time.now()
         point_cloud_topic = '/zed_node/point_cloud/cloud_registered'
         self.risk=0
+        #self._global_frame = rospy.get_param('~global_frame', None)
+        #self._tf_prefix = rospy.get_param('~tf_prefix', rospy.get_name())
         self.zone=0
-        self.publish_tf=None
 
         self._tf_listener = tf.TransformListener()
         self._current_image = None
@@ -220,30 +223,31 @@ class Flow:
     
     def calculate_tf(self, x, y):
         (trans, _) = self._tf_listener.lookupTransform('/' + self._global_frame, '/zed2i_camera_center', rospy.Time(0))
-
+        publish_tf = False
         if self._current_pc is None:
             rospy.loginfo('No point cloud')
+        else:
+            x_center=x
+            y_center=y
+            pc_list = list(
+                pc2.read_points(self._current_pc,
+                                skip_nans=True,
+                                field_names=('x', 'y', 'z'),
+                                uvs=[(x_center, y_center)]))
+            if len(pc_list) > 0:
+                publish_tf = True
+                tf_id = 'person_follow'
+                point_z, point_x, point_y = pc_list[0]
 
-        pc_list = list(
-            pc2.read_points(self._current_pc,
-                            skip_nans=True,
-                            field_names=('x', 'y', 'z'),
-                            uvs=[(x, y)]))
+            # if the user passes a tf prefix, we append it to the object tf name here
+            # if self._tf_prefix is not None:
+            #     tf_id = self._tf_prefix + '/' + str(self.yolo.names[int(c)]) + str(i)
+            #     aux.tf_id.data = tf_id
 
-        if len(pc_list) > 0:
-            self.publish_tf = True
-            tf_id = 'person_follow'
-            point_z, point_x, point_y = pc_list[0]
-
-        # if the user passes a tf prefix, we append it to the object tf name here
-        if self._tf_prefix is not None:
-            tf_id = self._tf_prefix + '/' + str(self.yolo.names[int(c)]) + str(i)
-            aux.tf_id.data = tf_id
-
-        if self.publish_tf:
+        if publish_tf:
             # Object tf (x, y, z) must be passed as (z, -x, -y)
             object_tf = [point_z, point_x, point_y]
-            frame = 'zed2i_camera_center'
+            frame = '/zed_left_camera_frame'
 
             # Translate the tf in regard to the fixed frame
             if self._global_frame is not None:
@@ -301,7 +305,7 @@ class Flow:
         direction='not_defined'
         val_correc=1.5 # valor de correcao, usar entre 0.5 e 2.5
         previous_centroid_y = 387.54083195327223 # valor inicial do centroide (apenas para o primeiro frame a passar do flow, depois e corrigido)
-        current_centroid_x = 387.54083195327223 # valor inicial do centroide (apenas para o primeiro frame a passar do flow, depois e corrigido)
+        self.current_centroid_x = 387.54083195327223 # valor inicial do centroide (apenas para o primeiro frame a passar do flow, depois e corrigido)
         previous_centroid_x = 387.54083195327223 # valor inicial do centroide (apenas para o primeiro frame a passar do flow, depois e corrigido)
         previous_risk=0 #valor inicial do risco apenas para o primeiro frame
         source = str(source)
@@ -472,18 +476,18 @@ class Flow:
                             if id_to_find in bbox_dict:
                                 bbox_values = bbox_dict[id_to_find][-1]  # Get the last entry in the list for the ID
                                 #pub.publish(bbox_values)
-                                current_centroid_x = int(self.calculate_centroid_x(bbox_values))
-                                current_centroid_y = int(self.calculate_centroid_y(bbox_values))
-                                self.zone= self.calculate_zone(current_centroid_x)
-                                print(f"Centroid_x for ID {id_to_find}: {current_centroid_x}")
+                                self.current_centroid_x = int(self.calculate_centroid_x(bbox_values))
+                                self.current_centroid_y = int(self.calculate_centroid_y(bbox_values))
+                                self.zone= self.calculate_zone(self.current_centroid_x)
+                                print(f"Centroid_x for ID {id_to_find}: {self.current_centroid_x}")
 
-                                if current_centroid_x-previous_centroid_x <val_correc and  current_centroid_x-previous_centroid_x > -val_correc :
+                                if self.current_centroid_x-previous_centroid_x <val_correc and  self.current_centroid_x-previous_centroid_x > -val_correc :
                                     print(f'ID {id_to_find} is moving foward')
                                     direction=('foward')
-                                elif current_centroid_x > previous_centroid_x:
+                                elif self.current_centroid_x > previous_centroid_x:
                                     print(f'ID {id_to_find} is moving right')
                                     direction=('right')
-                                elif current_centroid_x < previous_centroid_x:
+                                elif self.current_centroid_x < previous_centroid_x:
                                     print(f'ID {id_to_find} is moving left')
                                     direction=('left')
                                 else:
@@ -494,14 +498,14 @@ class Flow:
                                 print(f"risco atual = {self.risk}")
                                 previous_risk=self.risk
                                 # Update the previous centroid_x value for the ID
-                                previous_centroid_x = current_centroid_x
-                                previous_centroid_y = current_centroid_y
+                                previous_centroid_x = self.current_centroid_x
+                                previous_centroid_y = self.current_centroid_y
                                 
                             else:
                                 print(f'No bounding box found for ID {id_to_find}')
 
                             # calculate and publish the tf
-                            self.calculate_tf(current_centroid_x, current_centroid_y)
+                            self.calculate_tf(self.current_centroid_x, self.current_centroid_y)
 
                             #msg.riskanddirection=
                             self.msg.direction=direction
