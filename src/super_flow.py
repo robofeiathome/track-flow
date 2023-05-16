@@ -217,6 +217,50 @@ class Flow:
             self.risk=0
 
         return self.risk
+    
+    def calculate_tf(self, x, y):
+        (trans, _) = self._tf_listener.lookupTransform('/' + self._global_frame, '/zed2i_camera_center', rospy.Time(0))
+
+        if self._current_pc is None:
+            rospy.loginfo('No point cloud')
+
+        pc_list = list(
+            pc2.read_points(self._current_pc,
+                            skip_nans=True,
+                            field_names=('x', 'y', 'z'),
+                            uvs=[(x, y)]))
+
+        if len(pc_list) > 0:
+            self.publish_tf = True
+            tf_id = 'person_follow'
+            point_z, point_x, point_y = pc_list[0]
+
+        # if the user passes a tf prefix, we append it to the object tf name here
+        if self._tf_prefix is not None:
+            tf_id = self._tf_prefix + '/' + str(self.yolo.names[int(c)]) + str(i)
+            aux.tf_id.data = tf_id
+
+        if self.publish_tf:
+            # Object tf (x, y, z) must be passed as (z, -x, -y)
+            object_tf = [point_z, point_x, point_y]
+            frame = 'zed2i_camera_center'
+
+            # Translate the tf in regard to the fixed frame
+            if self._global_frame is not None:
+                object_tf = np.array(trans) + object_tf
+                frame = self._global_frame
+
+            if object_tf is not None and point_x != float("-inf") and point_y != float("-inf") and point_z != float("-inf"):
+                try:
+                    self._tfpub.sendTransform((object_tf),
+                                                tf.transformations.quaternion_from_euler(0, 0, 0),
+                                                rospy.Time.now(),
+                                                tf_id,
+                                                frame)
+                    #self.time = self.time + rospy.Duration(1e-3)
+                except:
+                    pass
+                
 
     def run(
             self, 
@@ -431,12 +475,8 @@ class Flow:
                                 current_centroid_x = int(self.calculate_centroid_x(bbox_values))
                                 current_centroid_y = int(self.calculate_centroid_y(bbox_values))
                                 self.zone= self.calculate_zone(current_centroid_x)
-                                # centroid_x_to_tf=
-                                # centroid_y_to_tf=
                                 print(f"Centroid_x for ID {id_to_find}: {current_centroid_x}")
 
-                            #if id_to_find in previous_centroid_x:
-                                # Compare the current and previous centroid_x values
                                 if current_centroid_x-previous_centroid_x <val_correc and  current_centroid_x-previous_centroid_x > -val_correc :
                                     print(f'ID {id_to_find} is moving foward')
                                     direction=('foward')
@@ -457,45 +497,12 @@ class Flow:
                                 previous_centroid_x = current_centroid_x
                                 previous_centroid_y = current_centroid_y
                                 
-                                #calculate_tf(current_centroid_x, current_centroid_y)
                             else:
                                 print(f'No bounding box found for ID {id_to_find}')
 
-                            (trans, _) = self._tf_listener.lookupTransform('/' + self._global_frame, '/zed2i_camera_center', rospy.Time(0))
+                            # calculate and publish the tf
+                            self.calculate_tf(current_centroid_x, current_centroid_y)
 
-                            if self._current_pc is None:
-                                rospy.loginfo('No point cloud')
-
-                            pc_list = list(
-                                pc2.read_points(self._current_pc,
-                                                skip_nans=True,
-                                                field_names=('x', 'y', 'z'),
-                                                uvs=[(current_centroid_x, current_centroid_y)]))
-
-                            if len(pc_list) > 0:
-                                self.publish_tf = True
-                                tf_id = 'person_follow'
-                                point_z, point_x, point_y = pc_list[0]
-
-                            if self.publish_tf:
-                                # Object tf (x, y, z) must be passed as (z, -x, -y)
-                                object_tf = [point_z, point_x, point_y]
-                                frame = 'zed2i_camera_center'
-
-                                # Translate the tf in regard to the fixed frame
-                                if self._global_frame is not None:
-                                    object_tf = np.array(trans) + object_tf
-                                    frame = self._global_frame
-
-                                if object_tf is not None:
-                                    self._tfpub.sendTransform((object_tf),
-                                                                tf.transformations.quaternion_from_euler(0, 0, 0),
-                                                                self.time,
-                                                                tf_id,
-                                                                frame)
-                                    self.time = self.time + rospy.Duration(1e-3)
-                                    
-                            
                             #msg.riskanddirection=
                             self.msg.direction=direction
                             self.msg.risk= self.risk

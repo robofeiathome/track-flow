@@ -1,5 +1,6 @@
 import time
 from collections import deque
+# Soon i will add all the functions here to make it easier to work
 # on develop, currentrly not working at all, missing various parts of the code
 waypoints = deque()
 robot = None  # Initialize your robot object here
