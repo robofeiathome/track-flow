@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-# Authors: Mat e leled
-
 import rospy
 import csv
 import tf2_ros
@@ -25,80 +23,83 @@ class DataWriter:
         self.frame_id = "person_follow"
         # TF map
         self.target_frame = "map"
-        # TF correct frame to follow
+        # TF corrected frame to follow
+        self.corrected_frame = "xyzcorrect_follow"
+        # TF correct frame to follow with orientation
         self.new_frame = "path_to_follow"
         # Previous Transform
         self.previous_tf = None
-        # Set up timer to call add_tf_as_waypoint every 1 second
-        self.timer = rospy.Timer(rospy.Duration(1), self.add_tf_as_waypoint)
+        # Set up timer to call run every 1 second
+        self.timer = rospy.Timer(rospy.Duration(1), self.run)
 
-    def add_tf_as_waypoint(self, event):
-        try:
-            rospy.loginfo("Before TF lookup")
+    def lookup_and_correct_tf(self):
+        # Read person follow tf
+        transform = self.tf_buffer.lookup_transform(self.target_frame, self.frame_id, rospy.Time(0), rospy.Duration(1.0))
+        # Change the z to 0.0
+        transform.transform.translation.z = 0.0
+        return transform
 
-            transform = self.tf_buffer.lookup_transform(self.target_frame, self.frame_id, rospy.Time(0), rospy.Duration(1.0))
-            trans = transform.transform.translation
-            rot = transform.transform.rotation
-
-            # Change the z to 0.0
+    def adjust_orientation(self, corrected_tf):
+        if self.previous_tf is not None:
+            # Calculate the direction to the new tf and set the rotation to point that direction
+            direction = np.array([corrected_tf.transform.translation.x, corrected_tf.transform.translation.y]) - np.array([self.previous_tf.x, self.previous_tf.y])
+            angle = np.arctan2(direction[1], direction[0])
+            q = quaternion_from_euler(0, 0, angle)
+            corrected_tf.transform.rotation.x = 0.0
+            corrected_tf.transform.rotation.y = 0.0
+            corrected_tf.transform.rotation.z = q[2]
+            corrected_tf.transform.rotation.w = q[3]
             
-            trans.z = 0.0
-
-            # If previous_tf exists, calculate the direction to the new tf and set the rotation to point that direction
-            if self.previous_tf is not None:
-                direction = np.array([trans.x, trans.y]) - np.array([self.previous_tf.x, self.previous_tf.y])
-                angle = np.arctan2(direction[1], direction[0])
-                q = quaternion_from_euler(0, 0, angle)
-                # trans.x = self.previous_tf.x
-                # trans.y = self.previous_tf.y
-                rot.x = 0.0
-                rot.y = 0.0
-                rot.z = q[2]
-                rot.w = q[3]
-
-            # Save this tf for use in the next iteration
-            self.previous_tf = trans
-
+            # Broadcast tf with correct rotation
             new_transform = TransformStamped()
             new_transform.header.stamp = rospy.Time.now()
             new_transform.header.frame_id = self.target_frame
             new_transform.child_frame_id = self.new_frame
-            new_transform.transform.translation = trans
-            new_transform.transform.rotation = rot
+            new_transform.transform = corrected_tf.transform
             self.br.sendTransform(new_transform)
+            return new_transform
+        # Save this tf for use in the next iteration
+        self.previous_tf = corrected_tf.transform.translation
 
-            # Create a PoseStamped from the TransformStamped
-            pose_stamped = PoseStamped()
-            pose_stamped.header = new_transform.header
-            pose_stamped.pose.position = new_transform.transform.translation
-            pose_stamped.pose.orientation = new_transform.transform.rotation
+    def write_tf_to_csv(self, new_transform):
+        pose_stamped = PoseStamped()
+        pose_stamped.header = new_transform.header
+        pose_stamped.pose.position = new_transform.transform.translation
+        pose_stamped.pose.orientation = new_transform.transform.rotation
 
-            # Fetch the transform between the frames
-            trans = self.tf_buffer.lookup_transform(self.target_frame, new_transform.header.frame_id, rospy.Time(0), rospy.Duration(1.0))
+        # Fetch the transform between the frames
+        trans = self.tf_buffer.lookup_transform(self.target_frame, self.new_frame, rospy.Time(0), rospy.Duration(1.0))
 
-            # Manually apply the transformation to the pose
-            transformed = do_transform_pose(pose_stamped, trans)
+        # Manually apply the transformation to the pose
+        transformed = do_transform_pose(pose_stamped, trans)
 
-            new_waypoint = [
-                transformed.pose.position.x,
-                transformed.pose.position.y,
-                transformed.pose.position.z,
-                transformed.pose.orientation.x,
-                transformed.pose.orientation.y,
-                transformed.pose.orientation.z,
-                transformed.pose.orientation.w
-            ]
-            with open(self.file_path, "a") as csv_file:
-                csv_writer = csv.writer(csv_file)
-                csv_writer.writerow(new_waypoint)
-                rospy.loginfo("Added Pose")
+        new_waypoint = [
+            transformed.pose.position.x,
+            transformed.pose.position.y,
+            transformed.pose.position.z,
+            transformed.pose.orientation.x,
+            transformed.pose.orientation.y,
+            transformed.pose.orientation.z,
+            transformed.pose.orientation.w
+        ]
+        with open(self.file_path, "a") as csv_file:
+            csv_writer = csv.writer(csv_file)
+            csv_writer.writerow(new_waypoint)
+            rospy.loginfo("Added Pose")
 
+    def run(self, event):
+        try:
+            rospy.loginfo("Before TF lookup")
+            # Lookup and correct tf
+            corrected_tf = self.lookup_and_correct_tf()
+            # Adjust orientation and broadcast new tf
+            new_transform = self.adjust_orientation(corrected_tf)
+            # Write the new transform to CSV if it's not the first one
+            if self.previous_tf is not None and new_transform is not None:
+                self.write_tf_to_csv(new_transform)
             rospy.loginfo("After TF lookup")
-            return new_waypoint
-
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
             rospy.logwarn("TF lookup failed: %s" % str(e))
-            return None
 
 
 if __name__ == "__main__":
