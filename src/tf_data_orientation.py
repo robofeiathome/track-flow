@@ -22,8 +22,6 @@ class DataWriter:
         self.frame_id = "person_follow"
         # TF map
         self.target_frame = "map"
-        # TF corrected frame to follow
-        self.corrected_frame = "xyzcorrect_follow"
         # TF correct frame to follow with orientation
         self.new_frame = "path_to_follow"
         # Previous Transform
