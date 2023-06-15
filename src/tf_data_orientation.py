@@ -7,7 +7,6 @@ import numpy as np
 from geometry_msgs.msg import PoseStamped, TransformStamped
 from tf2_ros import TransformBroadcaster
 from tf.transformations import quaternion_from_euler
-from tf2_geometry_msgs import do_transform_pose
 
 
 class DataWriter:
@@ -40,6 +39,7 @@ class DataWriter:
         return transform
 
     def adjust_orientation(self, corrected_tf):
+        new_transform = None
         if self.previous_tf is not None:
             # Calculate the direction to the new tf and set the rotation to point that direction
             direction = np.array([corrected_tf.transform.translation.x, corrected_tf.transform.translation.y]) - np.array([self.previous_tf.x, self.previous_tf.y])
@@ -57,9 +57,10 @@ class DataWriter:
             new_transform.child_frame_id = self.new_frame
             new_transform.transform = corrected_tf.transform
             self.br.sendTransform(new_transform)
-            return new_transform
+        
         # Save this tf for use in the next iteration
         self.previous_tf = corrected_tf.transform.translation
+        return new_transform
 
     def write_tf_to_csv(self, new_transform):
         pose_stamped = PoseStamped()
@@ -67,20 +68,14 @@ class DataWriter:
         pose_stamped.pose.position = new_transform.transform.translation
         pose_stamped.pose.orientation = new_transform.transform.rotation
 
-        # Fetch the transform between the frames
-        trans = self.tf_buffer.lookup_transform(self.target_frame, self.new_frame, rospy.Time(0), rospy.Duration(1.0))
-
-        # Manually apply the transformation to the pose
-        transformed = do_transform_pose(pose_stamped, trans)
-
         new_waypoint = [
-            transformed.pose.position.x,
-            transformed.pose.position.y,
-            transformed.pose.position.z,
-            transformed.pose.orientation.x,
-            transformed.pose.orientation.y,
-            transformed.pose.orientation.z,
-            transformed.pose.orientation.w
+            pose_stamped.pose.position.x,
+            pose_stamped.pose.position.y,
+            pose_stamped.pose.position.z,
+            pose_stamped.pose.orientation.x,
+            pose_stamped.pose.orientation.y,
+            pose_stamped.pose.orientation.z,
+            pose_stamped.pose.orientation.w
         ]
         with open(self.file_path, "a") as csv_file:
             csv_writer = csv.writer(csv_file)
