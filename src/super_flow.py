@@ -4,21 +4,18 @@
 import argparse
 import cv2
 import os
-
 # limita o numero de processadores usados por pacotes pesados
 os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
 os.environ["MKL_NUM_THREADS"] = "1"
 os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
 os.environ["NUMEXPR_NUM_THREADS"] = "1"
-
 import sys
 import platform
 import numpy as np
 from pathlib import Path
 import torch
 import torch.backends.cudnn as cudnn
-
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # yolov8 strongsort root directory
 WEIGHTS = ROOT / 'weights'
@@ -50,7 +47,6 @@ from follow_me.msg import riskanddirection
 from sensor_msgs import point_cloud2 as pc2
 from sensor_msgs.msg import PointCloud2
 
-
 import rospy
 import numpy as np
 import tf
@@ -64,25 +60,21 @@ from sensor_msgs.msg import Image, PointCloud2
 import time
 import traceback
 
-
 @torch.no_grad()
-
-#def calculate_centroid(bbox):
-#    x_min, y_min, x_max, y_max = bbox
-#    centroid_x = (x_min + x_max) / 2
-#    centroid_y = (y_min + y_max) / 2
-#    return centroid_x, centroid_y
 
 class Flow:
     def __init__(self):
+        self.current_centroid_x=0
+        self.current_centroid_y=0
         self._global_frame = 'zed2i_left_camera_frame'
         self.pub = rospy.Publisher('riskanddirection', riskanddirection, queue_size=10)
         self.msg = riskanddirection()
         self.time=rospy.Time.now()
         point_cloud_topic = '/zed_node/point_cloud/cloud_registered'
         self.risk=0
+        #self._global_frame = rospy.get_param('~global_frame', None)
+        #self._tf_prefix = rospy.get_param('~tf_prefix', rospy.get_name())
         self.zone=0
-        self.publish_tf=None
 
         self._tf_listener = tf.TransformListener()
         self._current_image = None
@@ -214,6 +206,51 @@ class Flow:
             self.risk=0
 
         return self.risk
+    
+    def calculate_tf(self, x, y):
+        (trans, _) = self._tf_listener.lookupTransform('/' + self._global_frame, '/zed2i_camera_center', rospy.Time(0))
+        publish_tf = False
+        if self._current_pc is None:
+            rospy.loginfo('No point cloud')
+        else:
+            x_center=x
+            y_center=y
+            pc_list = list(
+                pc2.read_points(self._current_pc,
+                                skip_nans=True,
+                                field_names=('x', 'y', 'z'),
+                                uvs=[(x_center, y_center)]))
+            if len(pc_list) > 0:
+                publish_tf = True
+                tf_id = 'person_follow'
+                point_z, point_x, point_y = pc_list[0]
+
+            # if the user passes a tf prefix, we append it to the object tf name here
+            # if self._tf_prefix is not None:
+            #     tf_id = self._tf_prefix + '/' + str(self.yolo.names[int(c)]) + str(i)
+            #     aux.tf_id.data = tf_id
+
+        if publish_tf:
+            # Object tf (x, y, z) must be passed as (z, -x, -y)
+            object_tf = [point_z, point_x, point_y]
+            frame = '/zed_left_camera_frame'
+
+            # Translate the tf in regard to the fixed frame
+            if self._global_frame is not None:
+                object_tf = np.array(trans) + object_tf
+                frame = self._global_frame
+
+            if object_tf is not None and point_x != float("-inf") and point_y != float("-inf") and point_z != float("-inf"):
+                try:
+                    self._tfpub.sendTransform((object_tf),
+                                                tf.transformations.quaternion_from_euler(0, 0, 0),
+                                                rospy.Time.now(),
+                                                tf_id,
+                                                frame)
+                    #self.time = self.time + rospy.Duration(1e-3)
+                except:
+                    pass
+                
 
     def run(
             self, 
@@ -254,7 +291,7 @@ class Flow:
         direction='not_defined'
         val_correc=1.5 # valor de correcao, usar entre 0.5 e 2.5
         previous_centroid_y = 387.54083195327223 # valor inicial do centroide (apenas para o primeiro frame a passar do flow, depois e corrigido)
-        current_centroid_x = 387.54083195327223 # valor inicial do centroide (apenas para o primeiro frame a passar do flow, depois e corrigido)
+        self.current_centroid_x = 387.54083195327223 # valor inicial do centroide (apenas para o primeiro frame a passar do flow, depois e corrigido)
         previous_centroid_x = 387.54083195327223 # valor inicial do centroide (apenas para o primeiro frame a passar do flow, depois e corrigido)
         previous_risk=0 #valor inicial do risco apenas para o primeiro frame
         source = str(source)
@@ -425,22 +462,18 @@ class Flow:
                             if id_to_find in bbox_dict:
                                 bbox_values = bbox_dict[id_to_find][-1]  # Get the last entry in the list for the ID
                                 #pub.publish(bbox_values)
-                                current_centroid_x = int(self.calculate_centroid_x(bbox_values))
-                                current_centroid_y = int(self.calculate_centroid_y(bbox_values))
-                                self.zone= self.calculate_zone(current_centroid_x)
-                                # centroid_x_to_tf=
-                                # centroid_y_to_tf=
-                                print(f"Centroid_x for ID {id_to_find}: {current_centroid_x}")
+                                self.current_centroid_x = int(self.calculate_centroid_x(bbox_values))
+                                self.current_centroid_y = int(self.calculate_centroid_y(bbox_values))
+                                self.zone= self.calculate_zone(self.current_centroid_x)
+                                print(f"Centroid_x for ID {id_to_find}: {self.current_centroid_x}")
 
-                            #if id_to_find in previous_centroid_x:
-                                # Compare the current and previous centroid_x values
-                                if current_centroid_x-previous_centroid_x <val_correc and  current_centroid_x-previous_centroid_x > -val_correc :
+                                if self.current_centroid_x-previous_centroid_x <val_correc and  self.current_centroid_x-previous_centroid_x > -val_correc :
                                     print(f'ID {id_to_find} is moving foward')
                                     direction=('foward')
-                                elif current_centroid_x > previous_centroid_x:
+                                elif self.current_centroid_x > previous_centroid_x:
                                     print(f'ID {id_to_find} is moving right')
                                     direction=('right')
-                                elif current_centroid_x < previous_centroid_x:
+                                elif self.current_centroid_x < previous_centroid_x:
                                     print(f'ID {id_to_find} is moving left')
                                     direction=('left')
                                 else:
@@ -451,48 +484,15 @@ class Flow:
                                 print(f"risco atual = {self.risk}")
                                 previous_risk=self.risk
                                 # Update the previous centroid_x value for the ID
-                                previous_centroid_x = current_centroid_x
-                                previous_centroid_y = current_centroid_y
+                                previous_centroid_x = self.current_centroid_x
+                                previous_centroid_y = self.current_centroid_y
                                 
-                                #calculate_tf(current_centroid_x, current_centroid_y)
                             else:
                                 print(f'No bounding box found for ID {id_to_find}')
 
-                            (trans, _) = self._tf_listener.lookupTransform('/' + self._global_frame, '/zed2i_camera_center', rospy.Time(0))
+                            # calculate and publish the tf
+                            self.calculate_tf(self.current_centroid_x, self.current_centroid_y)
 
-                            if self._current_pc is None:
-                                rospy.loginfo('No point cloud')
-
-                            pc_list = list(
-                                pc2.read_points(self._current_pc,
-                                                skip_nans=True,
-                                                field_names=('x', 'y', 'z'),
-                                                uvs=[(current_centroid_x, current_centroid_y)]))
-
-                            if len(pc_list) > 0:
-                                self.publish_tf = True
-                                tf_id = 'person_follow'
-                                point_z, point_x, point_y = pc_list[0]
-
-                            if self.publish_tf:
-                                # Object tf (x, y, z) must be passed as (z, -x, -y)
-                                object_tf = [point_z, point_x, point_y]
-                                frame = 'zed2i_camera_center'
-
-                                # Translate the tf in regard to the fixed frame
-                                if self._global_frame is not None:
-                                    object_tf = np.array(trans) + object_tf
-                                    frame = self._global_frame
-
-                                if object_tf is not None:
-                                    self._tfpub.sendTransform((object_tf),
-                                                                tf.transformations.quaternion_from_euler(0, 0, 0),
-                                                                self.time,
-                                                                tf_id,
-                                                                frame)
-                                    self.time = self.time + rospy.Duration(1e-3)
-                                    
-                            
                             #msg.riskanddirection=
                             self.msg.direction=direction
                             self.msg.risk= self.risk
@@ -539,11 +539,9 @@ class Flow:
                         windows.append(p)
                         cv2.namedWindow(str(p), cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)  # allow window resize (Linux)
                         cv2.resizeWindow(str(p), im0.shape[1], im0.shape[0])
-                        
                     cv2.imshow(str(p), im0)
                     if cv2.waitKey(1) == ord('q'):  # 1 millisecond
                         exit()
-
                 # Save results (image with detections)
                 if save_vid:
                     if vid_path[i] != save_path:  # new video
@@ -559,27 +557,16 @@ class Flow:
                         save_path = str(Path(save_path).with_suffix('.mp4'))  # force *.mp4 suffix on results videos
                         vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
                     vid_writer[i].write(im0)
-
                 prev_frames[i] = curr_frames[i]
-                
             # Print total time (preprocessing + inference + NMS + tracking)
-            LOGGER.info(f"{s}{'' if len(det) else '(no detections), '}{sum([dt.dt for dt in dt if hasattr(dt, 'dt')]) * 1E3:.1f}ms")
-
-            # loop over the detections
-            #for *xyxy, conf, cls in bbox.xyxy[0]:
-            #    x1, y1, x2, y2 = map(int, xyxy)
-            #    bbox = (x1, y1, x2 - x1, y2 - y1)  # bounding box coordinates (x, y, w, h)
-            #    label = f"{names[int(cls)]} {conf:.2f}"  # class label and confidence score
-            #    id = int(cls)  # ID of the detected object
-            #    annotator.bbox(bbox, label=label, id=id)  # add the annotation to the annotator
-
+            #LOGGER.info(f"{s}{'' if len(det) else '(no detections), '}{sum([dt.dt for dt in dt if hasattr(dt, 'dt')]) * 1E3:.1f}ms")
 
         # Print results
         t = tuple(x.t / seen * 1E3 for x in dt)  # speeds per image
-        LOGGER.info(f'Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS, %.1fms {tracking_method} update per image at shape {(1, 3, *imgsz)}' % t)
+        #LOGGER.info(f'Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS, %.1fms {tracking_method} update per image at shape {(1, 3, *imgsz)}' % t)
         if save_txt or save_vid:
             s = f"\n{len(list((save_dir / 'tracks').glob('*.txt')))} tracks saved to {save_dir / 'tracks'}" if save_txt else ''
-            LOGGER.info(f"Results saved to {colorstr('bold', save_dir)}{s}")
+            #LOGGER.info(f"Results saved to {colorstr('bold', save_dir)}{s}")
         if update:
             strip_optimizer(yolo_weights)  # update model (to fix SourceChangeWarning)
 
@@ -619,12 +606,11 @@ class Flow:
             dnn=False,  # use OpenCV DNN for ONNX inference
             vid_stride=1,  # video frame-rate stride
             retina_masks=False,
-            
         )
 
 if __name__ == "__main__":
     rospy.init_node('super_flow')
-    
+
     try:
         Flow().main()
     except KeyboardInterrupt:

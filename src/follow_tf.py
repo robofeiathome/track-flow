@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 
-# Author: Nik
+# Author: Nik and GPT
 
 import collections
 import time
 import rospkg
 import actionlib
 import rospy
-import csv
 from geometry_msgs.msg import PoseStamped, Twist
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
-
+from tf import TransformListener
 from follow_me.srv import FollowWaypointsService
 from std_msgs.msg import String
 
@@ -22,7 +21,7 @@ fatal = rospy.logfatal
 
 class Follow:
     """
-    Read goal poses/locations from the designated topics, instruct move_base to follow them.
+    Read goal poses/locations from TF, instruct move_base to follow them.
     """
 
     def __init__(self):
@@ -30,47 +29,31 @@ class Follow:
 
         self.waypoints = collections.deque()
 
-        # Read parameters off the parameter server --------------------------------------------
-        #self.name = "/home/robofei/Workspace/waypoints.csv"
-        self.index = 30
         self.frame_id =  "map"
         self.wait_duration =  0.2
         self.actual_xy_goal_tolerance = 0.4
         self.actual_yaw_goal_tolerance =  3.14
         self.distance_tolerance =  0.2
-        self.file_path = '/home/robofei/Workspace/waypoints.csv'
 
-        # Is the path provided by the user ready to follow?
+        self.tf_listener = TransformListener()
+
         self.vel_msg = Twist()
         self.rate = rospy.Rate(10)
-        self.coord = []
-        self.coord_all = []
+        self.stop_follow = False
 
-        self.init_pose(self.file_path)
-        self.add_waypoints(self.coord, self.waypoints)
-
-        # move_base Action client -------------------------------------------------------------
-        self.move_base_client = actionlib.SimpleActionClient(
-            "/move_base", MoveBaseAction
-        )
+        self.move_base_client = actionlib.SimpleActionClient("/move_base", MoveBaseAction)
         info("Connecting to move_base...")
         self.move_base_client.wait_for_server()
         info("Connected to move_base.")
-        self.stop_follow = False
 
-        self.last_xy_goal_tolerance = rospy.get_param(
-            "/move_base/DWAPlannerROS/xy_goal_tolerance"
-        )
-        self.last_yaw_goal_tolerance = rospy.get_param(
-            "/move_base/DWAPlannerROS/yaw_goal_tolerance"
-        )
-        # create an action client
+        self.last_xy_goal_tolerance = rospy.get_param("/move_base/DWAPlannerROS/xy_goal_tolerance")
+        self.last_yaw_goal_tolerance = rospy.get_param("/move_base/DWAPlannerROS/yaw_goal_tolerance")
+
         self.client = actionlib.SimpleActionClient("move_base", MoveBaseAction)
         self.loss = rospy.Publisher('Cancel_waypoints', String, queue_size=10)
 
         self.rate.sleep()
 
-    # helper methods
     def send_move_base_goal(self, poses):
         """Assemble and send a new goal to move_base"""
         goal = MoveBaseGoal()
@@ -86,20 +69,15 @@ class Follow:
 
     def run_once(self):
         """Single iteration of the node loop."""
+        if len(self.waypoints) == 0:
+            warn("Loop Follow Start")
+            self.add_tf_as_waypoint()
 
-        if len(self.coord) == 0:
-           warn("Loop Follow Start")
-           self.add_waypoints(self.coord_all, self.waypoints)
-
-        # we have waypoints, let's follow them!
         while self.waypoints and not rospy.is_shutdown() and not self.stop_follow:
-            goal = self.waypoints[0]
-            
-            self.waypoints.popleft()
+            goal = self.waypoints.popleft()
 
             self.send_move_base_goal(goal)
 
-            # just wait until move_base reaches the goal...
             self.move_base_client.wait_for_result()
             info(
                 "Waiting for %f seconds before proceeding to the next goal..."
@@ -109,43 +87,33 @@ class Follow:
             state = self.move_base_client.get_state()
             if state == actionlib.GoalStatus.SUCCEEDED:
                 info("Goal successfully reache: %s" % str(goal))
-                #self.coord.pop(0)
                 time.sleep(self.wait_duration)
             else:
                 cancel = str(goal)
                 self.loss.publish(cancel)
                 warn("Failed to reach goal: %s" % str(goal))
 
-            #self.coord.pop(0)
             time.sleep(self.wait_duration)
 
-    # helper methods
-    def add_waypoints(self, coord, waypoints):
+    def add_tf_as_waypoint(self):
         try:
-            for row in coord:
-                pose = PoseStamped()
-                pose.header.frame_id = self.frame_id
-                pose.pose.position.x = float(row[0])
-                pose.pose.position.y = float(row[1])
-                #pose.pose.position.z = float(row[2])
-                #pose.pose.orientation.x = float(row[3])
-                #pose.pose.orientation.y = float(row[4])
-                pose.pose.orientation.z = float(row[5])
-                pose.pose.orientation.w = float(row[6])
-                waypoints.append(pose)
-                print(waypoints)
+            now = rospy.Time(0)
+            self.tf_listener.waitForTransform("/person_follow", "/map", now, rospy.Duration(1.0))
+            (trans,rot) = self.tf_listener.lookupTransform("/person_follow", "/map", now)
+            pose = PoseStamped()
+            pose.header.frame_id = self.frame_id
+            pose.pose.position.x = trans[0]
+            pose.pose.position.y = trans[1]
+            pose.pose.orientation.x = rot[0]
+            pose.pose.orientation.y = rot[1]
+            pose.pose.orientation.z = rot[2]
+            pose.pose.orientation.w = rot[3]
+            self.waypoints.append(pose)
+            rospy.sleep(1)
             return True
-        except:
-            fatal("Failed to add waypoints")
+        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+            fatal("Failed to get transform")
             return False
-
-    def init_pose(self, file_path):
-        with open(file_path, "r") as csv_file:
-            reader = csv.reader(csv_file)
-            for i, row in enumerate(reader):
-                self.coord_all.append(row)
-                if self.index <= i:
-                    self.coord.append(row)
 
     def run(self):
         info("run ...")
@@ -153,12 +121,8 @@ class Follow:
             self.run_once()
 
     def stop(self):
-        # wait for the action server to start up
         self.client.wait_for_server()
-
-        # cancel all goals sent by this action client
         self.client.cancel_all_goals()
-
         rospy.loginfo("Stop Follow")
 
     def handler(self, request):
