@@ -1,27 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-#Author: Mateus S
-#If need help contact : mateus.scarpelli03@gmail.com
-
 import argparse
 import cv2
 import os
-
 # limita o numero de processadores usados por pacotes pesados
 os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
 os.environ["MKL_NUM_THREADS"] = "1"
 os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
 os.environ["NUMEXPR_NUM_THREADS"] = "1"
-
 import sys
 import platform
 import numpy as np
 from pathlib import Path
 import torch
 import torch.backends.cudnn as cudnn
-
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # yolov8 strongsort root directory
 WEIGHTS = ROOT / 'weights'
@@ -53,7 +47,6 @@ from follow_me.msg import riskanddirection
 from sensor_msgs import point_cloud2 as pc2
 from sensor_msgs.msg import PointCloud2
 
-
 import rospy
 import numpy as np
 import tf
@@ -67,14 +60,7 @@ from sensor_msgs.msg import Image, PointCloud2
 import time
 import traceback
 
-
 @torch.no_grad()
-
-#def calculate_centroid(bbox):
-#    x_min, y_min, x_max, y_max = bbox
-#    centroid_x = (x_min + x_max) / 2
-#    centroid_y = (y_min + y_max) / 2
-#    return centroid_x, centroid_y
 
 class Flow:
     def __init__(self):
@@ -553,11 +539,9 @@ class Flow:
                         windows.append(p)
                         cv2.namedWindow(str(p), cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)  # allow window resize (Linux)
                         cv2.resizeWindow(str(p), im0.shape[1], im0.shape[0])
-                        
                     cv2.imshow(str(p), im0)
                     if cv2.waitKey(1) == ord('q'):  # 1 millisecond
                         exit()
-
                 # Save results (image with detections)
                 if save_vid:
                     if vid_path[i] != save_path:  # new video
@@ -573,27 +557,16 @@ class Flow:
                         save_path = str(Path(save_path).with_suffix('.mp4'))  # force *.mp4 suffix on results videos
                         vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
                     vid_writer[i].write(im0)
-
                 prev_frames[i] = curr_frames[i]
-                
             # Print total time (preprocessing + inference + NMS + tracking)
-            LOGGER.info(f"{s}{'' if len(det) else '(no detections), '}{sum([dt.dt for dt in dt if hasattr(dt, 'dt')]) * 1E3:.1f}ms")
-
-            # loop over the detections
-            #for *xyxy, conf, cls in bbox.xyxy[0]:
-            #    x1, y1, x2, y2 = map(int, xyxy)
-            #    bbox = (x1, y1, x2 - x1, y2 - y1)  # bounding box coordinates (x, y, w, h)
-            #    label = f"{names[int(cls)]} {conf:.2f}"  # class label and confidence score
-            #    id = int(cls)  # ID of the detected object
-            #    annotator.bbox(bbox, label=label, id=id)  # add the annotation to the annotator
-
+            #LOGGER.info(f"{s}{'' if len(det) else '(no detections), '}{sum([dt.dt for dt in dt if hasattr(dt, 'dt')]) * 1E3:.1f}ms")
 
         # Print results
         t = tuple(x.t / seen * 1E3 for x in dt)  # speeds per image
-        LOGGER.info(f'Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS, %.1fms {tracking_method} update per image at shape {(1, 3, *imgsz)}' % t)
+        #LOGGER.info(f'Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS, %.1fms {tracking_method} update per image at shape {(1, 3, *imgsz)}' % t)
         if save_txt or save_vid:
             s = f"\n{len(list((save_dir / 'tracks').glob('*.txt')))} tracks saved to {save_dir / 'tracks'}" if save_txt else ''
-            LOGGER.info(f"Results saved to {colorstr('bold', save_dir)}{s}")
+            #LOGGER.info(f"Results saved to {colorstr('bold', save_dir)}{s}")
         if update:
             strip_optimizer(yolo_weights)  # update model (to fix SourceChangeWarning)
 
@@ -633,12 +606,11 @@ class Flow:
             dnn=False,  # use OpenCV DNN for ONNX inference
             vid_stride=1,  # video frame-rate stride
             retina_masks=False,
-            
         )
 
 if __name__ == "__main__":
     rospy.init_node('super_flow')
-    
+
     try:
         Flow().main()
     except KeyboardInterrupt:

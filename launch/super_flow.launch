@@ -1,9 +1,7 @@
 <?xml version="1.0"?>
-<launch>
-    <!--<param name="/use_sim_time" value="true" />-->
-    
+<launch> 
     <node name="super_flow" pkg="follow_me" type="super_flow.py" output="screen">
     </node>
-
-
+    <node name="data_orientation" pkg="follow_me" type="tf_data_orientation.py" output="screen">
+    </node>
 </launch>
