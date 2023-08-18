@@ -55,16 +55,15 @@ find_package(catkin REQUIRED COMPONENTS
 add_message_files(
   FILES
   riskanddirection.msg
-  dc_to_follow.msg
 )
 
 ## Generate services in the 'srv' folder
-add_service_files(
-  DIRECTORY 
-  srv
-  FILES
-  FollowWaypointsService.srv
-)
+# add_service_files(
+#   DIRECTORY 
+#   srv
+#   FILES
+  
+# )
 
 ## Generate actions in the 'action' folder
 # add_action_files(
