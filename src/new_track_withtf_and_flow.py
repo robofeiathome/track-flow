@@ -53,6 +53,8 @@ class tracker:
         self._current_pc = pc
 
     def calculate_tf(self, current_centroid_x, current_centroid_y):
+        # Initialize point_x, point_y, point_z to None at the beginning of the function
+        point_z, point_x, point_y = None, None, None
         
         (trans, _) = self._tf_listener.lookupTransform('/' + self._global_frame, '/camera_rgb_frame', rospy.Time(0))
 
@@ -70,8 +72,8 @@ class tracker:
             tf_id = 'person_follow'
             point_z, point_x, point_y = pc_list[0]
 
-        if self.publish_tf:
-            # Object tf (x, y, z) must be passed as (z, -x, -y)
+        # This check will now work correctly
+        if point_z is not None and point_x is not None and point_y is not None:
             object_tf = [point_z, point_x, point_y]
             frame = 'camera_rgb_frame'
 
