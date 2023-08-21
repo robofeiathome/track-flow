@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import cv2
 from ultralytics import YOLO
 import rospy
@@ -6,23 +9,26 @@ import tf
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs import point_cloud2 as pc2
 from sensor_msgs.msg import Image, PointCloud2
-from follow_me.msg import riskanddirections
+from follow_me.msg import riskanddirection
 from std_msgs.msg import Int32
+import traceback
 
 class tracker:
     def __init__(self) -> None:   
         self.model = YOLO('yolov8n.pt')
-        self.source = 0
+        image_topic = "/camera/rgb/image_raw"
         self.id_to_follow = 1
         self.last_centroid_x = None
-        self._global_frame = '/camera/rgb/image_raw'
+        self._global_frame = "camera_rgb_frame"
+        self._current_image = None
         self.time=rospy.Time.now()
-        point_cloud_topic = '/camera/depth/points'
+        point_cloud_topic = "/camera/depth/points"
         self.publish_tf=None
         self._tf_listener = tf.TransformListener()
         self._current_pc = None
         self._bridge = CvBridge()
-        self._risk_and_direction_pub = rospy.Publisher('~risk_and_direction', riskanddirections, queue_size=10)
+        self._image_sub = rospy.Subscriber(image_topic, Image, self.image_callback)
+        self._risk_and_direction_pub = rospy.Publisher('~risk_and_direction', riskanddirection, queue_size=10)
         self.risk_matrix = [
             [9, 8, 7], [7, 6, 5],[5, 4, 3],[2, 1, 2],[3, 4, 5],[5, 6, 7],[7, 8, 9]
         ]
@@ -36,6 +42,11 @@ class tracker:
 
         self._tfpub = tf.TransformBroadcaster()
         rospy.loginfo('Ready to Track!')
+        
+    def image_callback(self, image):
+        """Image callback"""
+        # Store value on a private attribute
+        self._current_image = image
 
     def pc_callback(self, pc):
         """Point cloud callback"""
@@ -97,7 +108,7 @@ class tracker:
         risk_value = self.risk_matrix[segment][direction_map[direction]]
 
         # Publish risk and direction
-        msg = riskanddirections()
+        msg = riskanddirection()
         msg.direction = direction
         msg.risk.data = risk_value
         self._risk_and_direction_pub.publish(msg)
@@ -105,14 +116,17 @@ class tracker:
         return risk_value
 
     def main_track(self):
-        cap = cv2.VideoCapture(self.source)
-        frame_width = int(cap.get(3))
+        # cap = cv2.VideoCapture(self.source)
+        frame_width = 640
         rate = rospy.Rate(30)  # 30 Hz or 30 fps
 
-        while cap.isOpened():
-            success, frame = cap.read()
-            if success:
-                results = self.model.track(frame, persist=True, classes=0, verbose=False, device=0)
+        while not rospy.is_shutdown():
+
+            if self._current_image is not None:
+                
+                small_frame = self._bridge.imgmsg_to_cv2(self._current_image, desired_encoding='bgr8')
+                
+                results = self.model.track(source = small_frame, persist=True, classes=0, verbose=False, device=0)
                 annotated_frame = results[0].plot()
 
                 for r in results:
@@ -137,9 +151,9 @@ class tracker:
                 rate.sleep()
 
             else:
-                break
+                print("No image received")
+                rate.sleep()
 
-        cap.release()
         cv2.destroyAllWindows()
 
 if __name__ == "__main__":    
