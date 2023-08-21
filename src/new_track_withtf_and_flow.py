@@ -15,9 +15,9 @@ class tracker:
         self.source = 0
         self.id_to_follow = 1
         self.last_centroid_x = None
-        self._global_frame = 'zed2i_left_camera_frame'
+        self._global_frame = '/camera/rgb/image_raw'
         self.time=rospy.Time.now()
-        point_cloud_topic = '/zed_node/point_cloud/cloud_registered'
+        point_cloud_topic = '/camera/depth/points'
         self.publish_tf=None
         self._tf_listener = tf.TransformListener()
         self._current_pc = None
@@ -43,7 +43,7 @@ class tracker:
 
     def calculate_tf(self, current_centroid_x, current_centroid_y):
         
-        (trans, _) = self._tf_listener.lookupTransform('/' + self._global_frame, '/zed2i_camera_center', rospy.Time(0))
+        (trans, _) = self._tf_listener.lookupTransform('/' + self._global_frame, '/camera_rgb_frame', rospy.Time(0))
 
         if self._current_pc is None:
             rospy.loginfo('No point cloud')
@@ -62,7 +62,7 @@ class tracker:
         if self.publish_tf:
             # Object tf (x, y, z) must be passed as (z, -x, -y)
             object_tf = [point_z, point_x, point_y]
-            frame = 'zed2i_camera_center'
+            frame = 'camera_rgb_frame'
 
             # Translate the tf in regard to the fixed frame
             if self._global_frame is not None:
