@@ -4,15 +4,12 @@
 import cv2
 from ultralytics import YOLO
 import rospy
-import numpy as np
 import tf
-from cv_bridge import CvBridge, CvBridgeError
+from cv_bridge import CvBridge
 from sensor_msgs import point_cloud2 as pc2
 from sensor_msgs.msg import Image, PointCloud2
-from geometry_msgs.msg import Point  # <--- Import for geometry_msgs/Point
+from geometry_msgs.msg import Point 
 from follow_me.msg import riskanddirection
-from std_msgs.msg import Int32
-import traceback
 
 class tracker:
     def __init__(self) -> None:   
@@ -20,7 +17,6 @@ class tracker:
         image_topic = "/camera/rgb/image_raw"
         self.id_to_follow = 1
         self.last_centroid_x = None
-        self._global_frame = "camera_rgb_frame"
         self._current_image = None
         self.time=rospy.Time.now()
         point_cloud_topic = "/camera/depth/points"
@@ -29,16 +25,14 @@ class tracker:
         self._current_pc = None
         self._bridge = CvBridge()
         self._image_sub = rospy.Subscriber(image_topic, Image, self.image_callback)
-        self._risk_and_direction_pub = rospy.Publisher('~risk_and_direction', riskanddirection, queue_size=10)
-        
-        # Create a new publisher for the person_to_follow topic
+        self._risk_and_direction_pub = rospy.Publisher('~risk_and_direction', riskanddirection, queue_size=10)       
         self._person_to_follow_pub = rospy.Publisher('person_to_follow', Point, queue_size=10)
         
         self.risk_matrix = [
             [9, 8, 7], [7, 6, 5],[5, 4, 3],[2, 1, 2],[3, 4, 5],[5, 6, 7],[7, 8, 9]
         ]
 
-        self._imagepub = rospy.Publisher('~objects_label', Image, queue_size=10)
+        self._imagepub = rospy.Publisher('~tracker', Image, queue_size=10)
         if point_cloud_topic is not None:
             rospy.Subscriber(point_cloud_topic, PointCloud2, self.pc_callback)
         else:
@@ -54,9 +48,6 @@ class tracker:
 
     def calculate_tf(self, current_centroid_x, current_centroid_y):
         point_z, point_x, point_y = None, None, None
-        
-        (trans, _) = self._tf_listener.lookupTransform('/' + self._global_frame, '/camera_rgb_frame', rospy.Time(0))
-
         if self._current_pc is None:
             rospy.loginfo('No point cloud')
 
@@ -67,8 +58,6 @@ class tracker:
                             uvs=[(current_centroid_x, current_centroid_y)]))
 
         if len(pc_list) > 0:
-            self.publish_tf = True
-            tf_id = 'person_follow'
             point_z, point_x, point_y = pc_list[0]
 
         if point_z is not None and point_x is not None and point_y is not None:
