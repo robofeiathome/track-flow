@@ -84,9 +84,9 @@ class tracker:
                 self.time = self.time + rospy.Duration(1e-3)
         if point_z is not None and point_x is not None and point_y is not None:
             point_msg = Point()
-            point_msg.x = point_x
-            point_msg.y = point_y
-            point_msg.z = point_z
+            point_msg.x = point_y
+            point_msg.y = -point_z
+            point_msg.z = point_x
             self._person_to_follow_pub.publish(point_msg)
     def calculate_centroid(self, bbox):
         x_min, y_min, x_max, y_max = bbox
