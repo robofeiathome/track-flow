@@ -1,18 +1,15 @@
 #!/usr/bin/env python3
 
 import rospy
-import csv
 import tf2_ros
 import numpy as np
 from geometry_msgs.msg import PoseStamped, TransformStamped
 from tf2_ros import TransformBroadcaster
 from tf.transformations import quaternion_from_euler
 
-
-class DataWriter:
+class DataPublisher:
 
     def __init__(self):
-        self.file_path = '/home/robofei/Workspace/waypoints.csv'
         # Create listener
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
@@ -26,6 +23,8 @@ class DataWriter:
         self.new_frame = "path_to_follow"
         # Previous Transform
         self.previous_tf = None
+        # Create a publisher for the transformed data
+        self.data_publisher = rospy.Publisher('/path_to_follow', PoseStamped, queue_size=10)
         # Set up timer to call run every 1 second
         self.timer = rospy.Timer(rospy.Duration(1), self.run)
 
@@ -56,29 +55,20 @@ class DataWriter:
             new_transform.transform = corrected_tf.transform
             self.br.sendTransform(new_transform)
         
+        # Publish the transformed data as a message
+        if new_transform is not None:
+            self.publish_transform_as_message(new_transform)
+
         # Save this tf for use in the next iteration
         self.previous_tf = corrected_tf.transform.translation
         return new_transform
 
-    def write_tf_to_csv(self, new_transform):
+    def publish_transform_as_message(self, new_transform):
         pose_stamped = PoseStamped()
         pose_stamped.header = new_transform.header
         pose_stamped.pose.position = new_transform.transform.translation
         pose_stamped.pose.orientation = new_transform.transform.rotation
-
-        new_waypoint = [
-            pose_stamped.pose.position.x,
-            pose_stamped.pose.position.y,
-            pose_stamped.pose.position.z,
-            pose_stamped.pose.orientation.x,
-            pose_stamped.pose.orientation.y,
-            pose_stamped.pose.orientation.z,
-            pose_stamped.pose.orientation.w
-        ]
-        with open(self.file_path, "a") as csv_file:
-            csv_writer = csv.writer(csv_file)
-            csv_writer.writerow(new_waypoint)
-            rospy.loginfo("Added Pose")
+        self.data_publisher.publish(pose_stamped)
 
     def run(self, event):
         try:
@@ -87,17 +77,13 @@ class DataWriter:
             corrected_tf = self.lookup_and_correct_tf()
             # Adjust orientation and broadcast new tf
             new_transform = self.adjust_orientation(corrected_tf)
-            # Write the new transform to CSV if it's not the first one
-            if self.previous_tf is not None and new_transform is not None:
-                self.write_tf_to_csv(new_transform)
             rospy.loginfo("After TF lookup")
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
             rospy.logwarn("TF lookup failed: %s" % str(e))
 
-
 if __name__ == "__main__":
-    rospy.init_node("tf_data", log_level=rospy.DEBUG)
-    writer = DataWriter()
+    rospy.init_node("tf_data_publisher", log_level=rospy.DEBUG)
+    publisher = DataPublisher()
 
     try:
         rospy.spin()
