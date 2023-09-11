@@ -8,6 +8,7 @@ import tf
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs import point_cloud2 as pc2
 from sensor_msgs.msg import Image, PointCloud2
+from geometry_msgs.msg import Point 
 from follow_me.msg import riskanddirection
 from std_msgs.msg import Int32
 import traceback
