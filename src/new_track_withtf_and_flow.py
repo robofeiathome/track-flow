@@ -8,21 +8,22 @@ import tf
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs import point_cloud2 as pc2
 from sensor_msgs.msg import Image, PointCloud2
-from geometry_msgs.msg import Point 
+from geometry_msgs.msg import Point
 from follow_me.msg import riskanddirection
 from std_msgs.msg import Int32
 import traceback
+
 class tracker:
-    def __init__(self) -> None:   
+    def __init__(self) -> None:
         self.model = YOLO('yolov8n.pt')
-        image_topic = "/camera/rgb/image_raw"
+        image_topic = "/xtion/image_raw"
         self.id_to_follow = 1
         self.last_centroid_x = None
-        self._global_frame = "camera_rgb_frame"
+        self._global_frame = "map"
         self._current_image = None
-        self.time=rospy.Time.now()
-        point_cloud_topic = "/camera/depth/points"
-        self.publish_tf=None
+        self.time = rospy.Time.now()
+        point_cloud_topic = "/xtion/depth/points"
+        self.publish_tf = None
         self._tf_listener = tf.TransformListener()
         self._current_pc = None
         self._bridge = CvBridge()
@@ -30,9 +31,8 @@ class tracker:
         self._risk_and_direction_pub = rospy.Publisher('~risk_and_direction', riskanddirection, queue_size=10)
         self._person_to_follow_pub = rospy.Publisher('person_to_follow', Point, queue_size=10)
         self.risk_matrix = [
-            [9, 8, 7], [7, 6, 5],[5, 4, 3],[2, 1, 2],[3, 4, 5],[5, 6, 7],[7, 8, 9]
+            [9, 8, 7], [7, 6, 5], [5, 4, 3], [2, 1, 2], [3, 4, 5], [5, 6, 7], [7, 8, 9]
         ]
-        # Publisher for frames with detected objects
         self._imagepub = rospy.Publisher('~objects_label', Image, queue_size=10)
         if point_cloud_topic is not None:
             rospy.Subscriber(point_cloud_topic, PointCloud2, self.pc_callback)
@@ -40,19 +40,23 @@ class tracker:
             rospy.loginfo('No point cloud information available. Objects will not be placed in the scene.')
         self._tfpub = tf.TransformBroadcaster()
         rospy.loginfo('Ready to Track!')
-        
+
+    def read_published_tf(self, tf_id, frame):
+        try:
+            (trans, rot) = self._tf_listener.lookupTransform(frame, tf_id, rospy.Time(0))
+            return trans, rot
+        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+            return None, None
+
     def image_callback(self, image):
-        """Image callback"""
-        # Store value on a private attribute
         self._current_image = image
+
     def pc_callback(self, pc):
-        """Point cloud callback"""
         self._current_pc = pc
+
     def calculate_tf(self, current_centroid_x, current_centroid_y):
-        # Initialize point_x, point_y, point_z to None at the beginning of the function
         point_z, point_x, point_y = None, None, None
-        
-        (trans, _) = self._tf_listener.lookupTransform('/' + self._global_frame, '/camera_rgb_frame', rospy.Time(0))
+        (trans, _) = self._tf_listener.lookupTransform('/' + self._global_frame, '/xtion', rospy.Time(0))
         if self._current_pc is None:
             rospy.loginfo('No point cloud')
         pc_list = list(
@@ -64,30 +68,27 @@ class tracker:
             self.publish_tf = True
             tf_id = 'person_follow'
             point_z, point_x, point_y = pc_list[0]
-
-        # This check will now work correctly
         if point_z is not None and point_x is not None and point_y is not None:
             object_tf = [point_y, -point_z, point_x]
-            
-            frame = 'camera_rgb_frame'
-
-            # Translate the tf in regard to the fixed frame
+            frame = 'xtion'
             if self._global_frame is not None:
                 object_tf = np.array(trans) + object_tf
                 frame = self._global_frame
             if object_tf is not None:
                 self._tfpub.sendTransform((object_tf),
-                                            tf.transformations.quaternion_from_euler(0, 0, 0),
-                                            self.time,
-                                            tf_id,
-                                            frame)
+                                          tf.transformations.quaternion_from_euler(0, 0, 0),
+                                          self.time,
+                                          tf_id,
+                                          frame)
                 self.time = self.time + rospy.Duration(1e-3)
-        if point_z is not None and point_x is not None and point_y is not None:
-            point_msg = Point()
-            point_msg.x = point_y
-            point_msg.y = -point_z
-            point_msg.z = point_x
-            self._person_to_follow_pub.publish(point_msg)
+            trans, _ = self.read_published_tf(tf_id, frame)
+            if trans:
+                point_msg = Point()
+                point_msg.x = trans[0]
+                point_msg.y = trans[1]
+                point_msg.z = 0.0
+                self._person_to_follow_pub.publish(point_msg)
+
     def calculate_centroid(self, bbox):
         x_min, y_min, x_max, y_max = bbox
         return int((x_min + x_max) / 2), int((y_min + y_max) / 2)
