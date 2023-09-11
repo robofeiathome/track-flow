@@ -2,4 +2,6 @@
 <launch> 
     <node name="super_flow" pkg="follow_me" type="new_track_withtf_and_flow.py" output="screen">
     </node>
+    <node name="data_orientation" pkg="follow_me" type="tf_data_orientation.py" output="screen">
+    </node>
 </launch>
