@@ -65,7 +65,7 @@ class tracker:
 
         # This check will now work correctly
         if point_z is not None and point_x is not None and point_y is not None:
-            object_tf = [point_y, -point_z, -point_x]
+            object_tf = [point_y, -point_z, point_x]
             frame = 'camera_rgb_frame'
 
             # Translate the tf in regard to the fixed frame
