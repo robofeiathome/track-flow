@@ -27,6 +27,7 @@ class tracker:
         self._bridge = CvBridge()
         self._image_sub = rospy.Subscriber(image_topic, Image, self.image_callback)
         self._risk_and_direction_pub = rospy.Publisher('~risk_and_direction', riskanddirection, queue_size=10)
+        self._person_to_follow_pub = rospy.Publisher('person_to_follow', Point, queue_size=10)
         self.risk_matrix = [
             [9, 8, 7], [7, 6, 5],[5, 4, 3],[2, 1, 2],[3, 4, 5],[5, 6, 7],[7, 8, 9]
         ]
@@ -66,6 +67,7 @@ class tracker:
         # This check will now work correctly
         if point_z is not None and point_x is not None and point_y is not None:
             object_tf = [point_y, -point_z, point_x]
+            
             frame = 'camera_rgb_frame'
 
             # Translate the tf in regard to the fixed frame
@@ -79,6 +81,12 @@ class tracker:
                                             tf_id,
                                             frame)
                 self.time = self.time + rospy.Duration(1e-3)
+        if point_z is not None and point_x is not None and point_y is not None:
+            point_msg = Point()
+            point_msg.x = point_x
+            point_msg.y = point_y
+            point_msg.z = point_z
+            self._person_to_follow_pub.publish(point_msg)
     def calculate_centroid(self, bbox):
         x_min, y_min, x_max, y_max = bbox
         return int((x_min + x_max) / 2), int((y_min + y_max) / 2)
