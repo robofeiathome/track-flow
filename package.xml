@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>follow_me</name>
+  <name>hera_tracker</name>
   <version>1.0.0</version>
-  <description>follow_me with yolov8, strongsort, osnet and optical flow</description>
+  <description>tracker with yolov8, strongsort, osnet and optical flow</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->
