@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
 <launch> 
-    <node name="super_flow" pkg="follow_me" type="new_track_withtf_and_flow.py" output="screen">
+    <node name="super_flow" pkg="hera_tracker" type="new_track_withtf_and_flow.py" output="screen">
     </node>
 </launch>
