@@ -14,16 +14,16 @@ from std_msgs.msg import Int32
 import traceback
 
 
-class tracker:
+class Tracker:
     def __init__(self) -> None:
         self.model = YOLO('yolov8n.pt')
-        image_topic = "/xtion/image_raw"
+        image_topic = "/camera/rgb/image_raw"
         self.id_to_follow = 1
         self.last_centroid_x = None
         self._global_frame = "map"
         self._current_image = None
         self.time = rospy.Time.now()
-        point_cloud_topic = "/xtion/depth/points"
+        point_cloud_topic = "/camera/depth/points"
         self.publish_tf = None
         self._tf_listener = tf.TransformListener()
         self._current_pc = None
@@ -150,7 +150,7 @@ class tracker:
 if __name__ == "__main__":    
     rospy.init_node('tracker_node', anonymous=True)
     try:
-        tracker().main_track()
+        Tracker().main_track()
     except KeyboardInterrupt:
         print("\nEnd of the program :)")
     except rospy.ROSInterruptException:
