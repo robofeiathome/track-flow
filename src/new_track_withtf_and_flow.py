@@ -8,7 +8,7 @@ import tf
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs import point_cloud2 as pc2
 from sensor_msgs.msg import Image, PointCloud2
-from geometry_msgs.msg import Point
+from geometry_msgs.msg import Point, PointStamped
 from hera_tracker.msg import riskanddirection
 from std_msgs.msg import Int32
 import traceback
@@ -30,7 +30,7 @@ class tracker:
         self._bridge = CvBridge()
         self._image_sub = rospy.Subscriber(image_topic, Image, self.image_callback)
         self._risk_and_direction_pub = rospy.Publisher('~risk_and_direction', riskanddirection, queue_size=10)
-        self._person_to_follow_pub = rospy.Publisher('person_to_follow', Point, queue_size=10)
+        self._person_to_follow_pub = rospy.Publisher('person_to_follow', PointStamped, queue_size=10)
         self.risk_matrix = [
             [9, 8, 7], [7, 6, 5], [5, 4, 3], [2, 1, 2], [3, 4, 5], [5, 6, 7], [7, 8, 9]
         ]
@@ -76,7 +76,7 @@ class tracker:
                 object_tf = np.array(trans) + object_tf
                 frame = self._global_frame
             if object_tf is not None:
-                self._tfpub.sendTransform((object_tf),
+                self._tfpub.sendTransform(object_tf,
                                           tf.transformations.quaternion_from_euler(0, 0, 0),
                                           self.time,
                                           tf_id,
@@ -84,10 +84,12 @@ class tracker:
                 self.time = self.time + rospy.Duration(1e-3)
             trans, _ = self.read_published_tf(tf_id, frame)
             if trans:
-                point_msg = Point()
-                point_msg.x = trans[0]
-                point_msg.y = trans[1]
-                point_msg.z = 0.0
+                point_msg = PointStamped()
+                point_msg.header.frame_id = frame
+                point_msg.header.stamp = self.time
+                point_msg.point.x = trans[0]
+                point_msg.point.y = trans[1]
+                point_msg.point.z = 0.0
                 self._person_to_follow_pub.publish(point_msg)
 
     def calculate_centroid(self, bbox):
@@ -143,6 +145,8 @@ class tracker:
                 print("No image received")
                 rate.sleep()
         cv2.destroyAllWindows()
+
+
 if __name__ == "__main__":    
     rospy.init_node('tracker_node', anonymous=True)
     try:
