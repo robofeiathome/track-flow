@@ -8,7 +8,7 @@ import tf
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs import point_cloud2 as pc2
 from sensor_msgs.msg import Image, PointCloud2
-from geometry_msgs.msg import Point
+from geometry_msgs.msg import PointStamped
 from hera_tracker.msg import riskanddirection
 from hera_tracker.srv import retake, retrack
 from std_msgs.msg import Int32
@@ -31,7 +31,7 @@ class tracker:
         self._bridge = CvBridge()
         self._image_sub = rospy.Subscriber(image_topic, Image, self.image_callback)
         self._risk_and_direction_pub = rospy.Publisher('~risk_and_direction', riskanddirection, queue_size=10)
-        self._person_to_follow_pub = rospy.Publisher('person_to_follow', Point, queue_size=10)
+        self._person_to_follow_pub = rospy.Publisher('person_to_follow', PointStamped, queue_size=10)
         self.ids = []
         self.bboxs = []
         self.risk_matrix = [
@@ -45,16 +45,18 @@ class tracker:
         self._tfpub = tf.TransformBroadcaster()
         rospy.loginfo('Ready to Track!')
 
-
     def retake(self, distance):
-        for i in range(len(self.bboxs)):
-            xb, yb = self.calculate_centroid(self.bboxs[i])
+        print(self.bboxs)
+        for index, bbox in enumerate(self.bboxs):
+            print(bbox)
+            xb, yb = self.calculate_centroid(bbox)
             alvaro = self.calculate_tf(xb, yb)
-            if alvaro[0]<distance:
-                print("found id close enought/Found correct Alvaro") #Achamos o Alvaro!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                return self.ids[i]
+            print(alvaro)
+            if alvaro.point.x < distance:
+                #print("found id close enough/Found correct Alvaro")
+                return int(self.ids[index])
         return 0
-        
+
     #This services retake the id, changing it to the close enough person
     def handler_retake(self, req):
         response = self.retake(req.dist)
@@ -64,10 +66,10 @@ class tracker:
     def handler_retrack(self, req):
         if req.id is not None and req.id > 0:
             self.id_to_follow = req.id
-            print("ID changed to new Alvaro:", self.id_to_follow)
+            #print("ID changed to new Alvaro:", self.id_to_follow)
             return True
         else:
-            print("Invalid ID/No ID provided/No correct Alvaro")
+            #print("Invalid ID/No ID provided/No correct Alvaro")
             return False
 
     def read_published_tf(self, tf_id, frame):
@@ -112,10 +114,12 @@ class tracker:
                 self.time = self.time + rospy.Duration(1e-3)
             trans, _ = self.read_published_tf(tf_id, frame)
             if trans:
-                point_msg = Point()
-                point_msg.x = trans[0]
-                point_msg.y = trans[1]
-                point_msg.z = 0.0
+                point_msg = PointStamped()
+                point_msg.header.frame_id = self._global_frame
+                point_msg.header.stamp = rospy.Time.now()
+                point_msg.point.x = trans[0]
+                point_msg.point.y = trans[1]
+                point_msg.point.z = 0.0
                 self._person_to_follow_pub.publish(point_msg)
                 return point_msg
 
@@ -158,22 +162,23 @@ class tracker:
                         self.ids = ids
                         bbox_coords_list = r.boxes.xyxy.tolist()
                         self.bboxs = bbox_coords_list
+                        #print(self.bboxs)
                         for detected_id, bbox_coords in zip(ids, bbox_coords_list):
                             if detected_id == self.id_to_follow:
                                 centroid = self.calculate_centroid(bbox_coords)
                                 cx, cy = centroid
                                 risk_value = self.calculate_risk(centroid, frame_width)
-                                print(f"Risk value for ID {self.id_to_follow}:", risk_value)
+                                #print(f"Risk value for ID {self.id_to_follow}:", risk_value)
                                 Alvaro = self.calculate_tf(cx, cy)
-                                print("person_point:", Alvaro)
-                                print(f"Centroid for ID {self.id_to_follow}:", centroid)
+                                #print("person_point:", Alvaro)
+                                #print(f"Centroid for ID {self.id_to_follow}:", centroid)
                                 cv2.circle(annotated_frame, centroid, 5, (0, 255, 0), -1)
                 cv2.imshow("YOLOv8 Tracking", annotated_frame)
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     break
                 rate.sleep()
             else:
-                print("No image received")
+                #print("No image received")
                 rate.sleep()
         cv2.destroyAllWindows()
 if __name__ == "__main__":    
@@ -182,7 +187,7 @@ if __name__ == "__main__":
     s_retake = rospy.Service('retake_ID', retake, tr.handler_retake)
     s_retrack = rospy.Service('retrack_ID', retrack, tr.handler_retrack)
     try:
-        tracker().main_track()
+        tr.main_track()
     except KeyboardInterrupt:
         print("\nEnd of the program :)")
     except rospy.ROSInterruptException:
