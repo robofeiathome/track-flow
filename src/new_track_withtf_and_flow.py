@@ -11,7 +11,7 @@ from sensor_msgs.msg import Image, PointCloud2
 from geometry_msgs.msg import PointStamped
 from hera_tracker.msg import riskanddirection
 from hera_tracker.srv import retake, retrack
-from std_msgs.msg import Int32
+from std_msgs.msg import Int32, Bool
 import traceback
 
 
@@ -32,6 +32,7 @@ class tracker:
         self._image_sub = rospy.Subscriber(image_topic, Image, self.image_callback)
         self._risk_and_direction_pub = rospy.Publisher('~risk_and_direction', riskanddirection, queue_size=10)
         self._person_to_follow_pub = rospy.Publisher('person_to_follow', PointStamped, queue_size=10)
+        self._person_detected_pub = rospy.Publisher('person_detected', Bool, queue_size=10)
         self.ids = []
         self.bboxs = []
         self.risk_matrix = [
@@ -165,6 +166,7 @@ class tracker:
                         #print(self.bboxs)
                         for detected_id, bbox_coords in zip(ids, bbox_coords_list):
                             if detected_id == self.id_to_follow:
+                                person_detected = True
                                 centroid = self.calculate_centroid(bbox_coords)
                                 cx, cy = centroid
                                 risk_value = self.calculate_risk(centroid, frame_width)
@@ -173,6 +175,12 @@ class tracker:
                                 #print("person_point:", Alvaro)
                                 #print(f"Centroid for ID {self.id_to_follow}:", centroid)
                                 cv2.circle(annotated_frame, centroid, 5, (0, 255, 0), -1)
+                            else:
+                                person_detected = False
+
+                        if person_detected is not None:
+                            self._person_detected_pub.publish(person_detected)
+
                 cv2.imshow("YOLOv8 Tracking", annotated_frame)
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     break
