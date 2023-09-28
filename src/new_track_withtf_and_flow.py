@@ -51,6 +51,7 @@ class tracker:
             xb, yb = self.calculate_centroid(self.bboxs[i])
             alvaro = self.calculate_tf(xb, yb)
             if alvaro[0]<distance:
+                print("found id close enought/Found correct Alvaro") #Achamos o Alvaro!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                 return self.ids[i]
         return 0
         
@@ -63,8 +64,10 @@ class tracker:
     def handler_retrack(self, req):
         if req.id is not None and req.id > 0:
             self.id_to_follow = req.id
+            print("ID changed to new Alvaro:", self.id_to_follow)
             return True
         else:
+            print("Invalid ID/No ID provided/No correct Alvaro")
             return False
 
     def read_published_tf(self, tf_id, frame):
@@ -161,7 +164,8 @@ class tracker:
                                 cx, cy = centroid
                                 risk_value = self.calculate_risk(centroid, frame_width)
                                 print(f"Risk value for ID {self.id_to_follow}:", risk_value)
-                                self.calculate_tf(cx, cy)
+                                Alvaro = self.calculate_tf(cx, cy)
+                                print("person_point:", Alvaro)
                                 print(f"Centroid for ID {self.id_to_follow}:", centroid)
                                 cv2.circle(annotated_frame, centroid, 5, (0, 255, 0), -1)
                 cv2.imshow("YOLOv8 Tracking", annotated_frame)
