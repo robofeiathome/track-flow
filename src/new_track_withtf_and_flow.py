@@ -8,29 +8,32 @@ import tf
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs import point_cloud2 as pc2
 from sensor_msgs.msg import Image, PointCloud2
-from geometry_msgs.msg import Point, PointStamped
+from geometry_msgs.msg import Point
 from hera_tracker.msg import riskanddirection
+from hera_tracker.srv import retake, retrack
 from std_msgs.msg import Int32
 import traceback
 
 
-class Tracker:
+class tracker:
     def __init__(self) -> None:
         self.model = YOLO('yolov8n.pt')
-        image_topic = "/camera/rgb/image_raw"
+        image_topic = "/xtion/image_raw"
         self.id_to_follow = 1
         self.last_centroid_x = None
         self._global_frame = "map"
         self._current_image = None
         self.time = rospy.Time.now()
-        point_cloud_topic = "/camera/depth/points"
+        point_cloud_topic = "/xtion/depth/points"
         self.publish_tf = None
         self._tf_listener = tf.TransformListener()
         self._current_pc = None
         self._bridge = CvBridge()
         self._image_sub = rospy.Subscriber(image_topic, Image, self.image_callback)
         self._risk_and_direction_pub = rospy.Publisher('~risk_and_direction', riskanddirection, queue_size=10)
-        self._person_to_follow_pub = rospy.Publisher('person_to_follow', PointStamped, queue_size=10)
+        self._person_to_follow_pub = rospy.Publisher('person_to_follow', Point, queue_size=10)
+        self.ids = []
+        self.bboxs = []
         self.risk_matrix = [
             [9, 8, 7], [7, 6, 5], [5, 4, 3], [2, 1, 2], [3, 4, 5], [5, 6, 7], [7, 8, 9]
         ]
@@ -41,6 +44,28 @@ class Tracker:
             rospy.loginfo('No point cloud information available. Objects will not be placed in the scene.')
         self._tfpub = tf.TransformBroadcaster()
         rospy.loginfo('Ready to Track!')
+
+
+    def retake(self, distance):
+        for i in range(len(self.bboxs)):
+            xb, yb = self.calculate_centroid(self.bboxs[i])
+            alvaro = self.calculate_tf(xb, yb)
+            if alvaro[0]<distance:
+                return self.ids[i]
+        return 0
+        
+    #This services retake the id, changing it to the close enough person
+    def handler_retake(self, req):
+        response = self.retake(req.dist)
+        return response
+    
+    #This service changes the id to follow
+    def handler_retrack(self, req):
+        if req.id is not None and req.id > 0:
+            self.id_to_follow = req.id
+            return True
+        else:
+            return False
 
     def read_published_tf(self, tf_id, frame):
         try:
@@ -76,7 +101,7 @@ class Tracker:
                 object_tf = np.array(trans) + object_tf
                 frame = self._global_frame
             if object_tf is not None:
-                self._tfpub.sendTransform(object_tf,
+                self._tfpub.sendTransform((object_tf),
                                           tf.transformations.quaternion_from_euler(0, 0, 0),
                                           self.time,
                                           tf_id,
@@ -84,17 +109,17 @@ class Tracker:
                 self.time = self.time + rospy.Duration(1e-3)
             trans, _ = self.read_published_tf(tf_id, frame)
             if trans:
-                point_msg = PointStamped()
-                point_msg.header.frame_id = frame
-                point_msg.header.stamp = self.time
-                point_msg.point.x = trans[0]
-                point_msg.point.y = trans[1]
-                point_msg.point.z = 0.0
+                point_msg = Point()
+                point_msg.x = trans[0]
+                point_msg.y = trans[1]
+                point_msg.z = 0.0
                 self._person_to_follow_pub.publish(point_msg)
+                return point_msg
 
     def calculate_centroid(self, bbox):
         x_min, y_min, x_max, y_max = bbox
         return int((x_min + x_max) / 2), int((y_min + y_max) / 2)
+    
     def calculate_risk(self, centroid, frame_width):
         segment_width = frame_width // 7
         segment = centroid[0] // segment_width
@@ -113,8 +138,8 @@ class Tracker:
         msg.risk.data = risk_value
         self._risk_and_direction_pub.publish(msg)
         return risk_value
+    
     def main_track(self):
-        # cap = cv2.VideoCapture(self.source)
         frame_width = 640
         rate = rospy.Rate(30)  # 30 Hz or 30 fps
         while not rospy.is_shutdown():
@@ -127,7 +152,9 @@ class Tracker:
                 for r in results:
                     if hasattr(r, 'boxes') and r.boxes and hasattr(r.boxes, 'id') and r.boxes.id is not None:
                         ids = r.boxes.id.tolist()
+                        self.ids = ids
                         bbox_coords_list = r.boxes.xyxy.tolist()
+                        self.bboxs = bbox_coords_list
                         for detected_id, bbox_coords in zip(ids, bbox_coords_list):
                             if detected_id == self.id_to_follow:
                                 centroid = self.calculate_centroid(bbox_coords)
@@ -145,12 +172,13 @@ class Tracker:
                 print("No image received")
                 rate.sleep()
         cv2.destroyAllWindows()
-
-
 if __name__ == "__main__":    
     rospy.init_node('tracker_node', anonymous=True)
+    tr = tracker()
+    s_retake = rospy.Service('retake_ID', retake, tr.handler_retake)
+    s_retrack = rospy.Service('retrack_ID', retrack, tr.handler_retrack)
     try:
-        Tracker().main_track()
+        tracker().main_track()
     except KeyboardInterrupt:
         print("\nEnd of the program :)")
     except rospy.ROSInterruptException:

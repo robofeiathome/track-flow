@@ -2,7 +2,7 @@
 <package format="2">
   <name>hera_tracker</name>
   <version>1.0.0</version>
-  <description>tracker with yolov8, strongsort, osnet and optical flow</description>
+  <description>tracker with yolov8, botsort and optical flow</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->
