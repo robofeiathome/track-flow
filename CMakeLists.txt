@@ -63,8 +63,8 @@ add_service_files(
   DIRECTORY 
   srv
   FILES
-  retake.srv
-  retrack.srv
+  get_closest_id.srv
+  set_id.srv
   
 )
 

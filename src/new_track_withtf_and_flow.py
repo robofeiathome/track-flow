@@ -10,12 +10,12 @@ from sensor_msgs import point_cloud2 as pc2
 from sensor_msgs.msg import Image, PointCloud2
 from geometry_msgs.msg import PointStamped
 from hera_tracker.msg import riskanddirection
-from hera_tracker.srv import retake, retrack
+from hera_tracker.srv import get_closest_id, set_id
 from std_msgs.msg import Int32, Bool
 import traceback
 
 
-class tracker:
+class Tracker:
     def __init__(self) -> None:
         self.model = YOLO('yolov8n.pt')
         image_topic = "/xtion/image_raw"
@@ -30,9 +30,17 @@ class tracker:
         self._current_pc = None
         self._bridge = CvBridge()
         self._image_sub = rospy.Subscriber(image_topic, Image, self.image_callback)
-        self._risk_and_direction_pub = rospy.Publisher('~risk_and_direction', riskanddirection, queue_size=10)
-        self._person_to_follow_pub = rospy.Publisher('person_to_follow', PointStamped, queue_size=10)
-        self._person_detected_pub = rospy.Publisher('person_detected', Bool, queue_size=10)
+        self._risk_and_direction_pub = rospy.Publisher('/tracker/risk_and_direction', riskanddirection, queue_size=10)
+        self._person_to_follow_pub = rospy.Publisher('/tracker/person_to_follow', PointStamped, queue_size=10)
+        self._person_detected_pub = rospy.Publisher('/tracker/person_detected', Bool, queue_size=10)
+        self._id_detected_pub = rospy.Publisher('/tracker/id_detected', Bool, queue_size=10)
+
+        self.get_closest_id_service = rospy.Service('/tracker/get_closest_id', get_closest_id, self.handler_get_closest_id)
+        self.set_id_service = rospy.Service('/tracker/set_id', set_id, self.handler_set_id)
+
+        self.person_detected = False
+        self.id_detected = False
+
         self.ids = []
         self.bboxs = []
         self.risk_matrix = [
@@ -46,31 +54,28 @@ class tracker:
         self._tfpub = tf.TransformBroadcaster()
         rospy.loginfo('Ready to Track!')
 
-    def retake(self, distance):
+    def get_closest_id(self, distance):
         print(self.bboxs)
         for index, bbox in enumerate(self.bboxs):
             print(bbox)
             xb, yb = self.calculate_centroid(bbox)
-            alvaro = self.calculate_tf(xb, yb)
-            print(alvaro)
-            if alvaro.point.x < distance:
-                #print("found id close enough/Found correct Alvaro")
+            object_transform = self.calculate_tf(xb, yb)
+            print(object_transform)
+            if object_transform.point.x < distance:
                 return int(self.ids[index])
         return 0
 
-    #This services retake the id, changing it to the close enough person
-    def handler_retake(self, req):
-        response = self.retake(req.dist)
+    # These services retake the id, changing it to the close enough person
+    def handler_get_closest_id(self, req):
+        response = self.get_closest_id(req.dist)
         return response
-    
-    #This service changes the id to follow
-    def handler_retrack(self, req):
+
+    # This service changes the id to follow
+    def handler_set_id(self, req):
         if req.id is not None and req.id > 0:
             self.id_to_follow = req.id
-            #print("ID changed to new Alvaro:", self.id_to_follow)
             return True
         else:
-            #print("Invalid ID/No ID provided/No correct Alvaro")
             return False
 
     def read_published_tf(self, tf_id, frame):
@@ -127,7 +132,7 @@ class tracker:
     def calculate_centroid(self, bbox):
         x_min, y_min, x_max, y_max = bbox
         return int((x_min + x_max) / 2), int((y_min + y_max) / 2)
-    
+
     def calculate_risk(self, centroid, frame_width):
         segment_width = frame_width // 7
         segment = centroid[0] // segment_width
@@ -146,16 +151,16 @@ class tracker:
         msg.risk.data = risk_value
         self._risk_and_direction_pub.publish(msg)
         return risk_value
-    
+
     def main_track(self):
         frame_width = 640
         rate = rospy.Rate(30)  # 30 Hz or 30 fps
         while not rospy.is_shutdown():
             if self._current_image is not None:
-                
+
                 small_frame = self._bridge.imgmsg_to_cv2(self._current_image, desired_encoding='bgr8')
-                
-                results = self.model.track(source = small_frame, persist=True, classes=0, verbose=False, device=0)
+
+                results = self.model.track(source=small_frame, persist=True, classes=0, verbose=False, device=0)
                 annotated_frame = results[0].plot()
                 for r in results:
                     if hasattr(r, 'boxes') and r.boxes and hasattr(r.boxes, 'id') and r.boxes.id is not None:
@@ -163,37 +168,38 @@ class tracker:
                         self.ids = ids
                         bbox_coords_list = r.boxes.xyxy.tolist()
                         self.bboxs = bbox_coords_list
-                        #print(self.bboxs)
+
                         for detected_id, bbox_coords in zip(ids, bbox_coords_list):
                             if detected_id == self.id_to_follow:
-                                person_detected = True
+                                self.person_detected = True
+                                self.id_detected = True
                                 centroid = self.calculate_centroid(bbox_coords)
                                 cx, cy = centroid
-                                risk_value = self.calculate_risk(centroid, frame_width)
-                                #print(f"Risk value for ID {self.id_to_follow}:", risk_value)
-                                Alvaro = self.calculate_tf(cx, cy)
-                                #print("person_point:", Alvaro)
-                                #print(f"Centroid for ID {self.id_to_follow}:", centroid)
+                                self.calculate_risk(centroid, frame_width)
+                                self.calculate_tf(cx, cy)
+
                                 cv2.circle(annotated_frame, centroid, 5, (0, 255, 0), -1)
                             else:
-                                person_detected = False
-
-                        if person_detected is not None:
-                            self._person_detected_pub.publish(person_detected)
+                                self.person_detected = True
+                                self.id_detected = False
+                    else:
+                        self.person_detected = False
+                        self.id_detected = False
+                    self._person_detected_pub.publish(self.person_detected)
+                    self._id_detected_pub.publish(self.id_detected)
 
                 cv2.imshow("YOLOv8 Tracking", annotated_frame)
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     break
                 rate.sleep()
             else:
-                #print("No image received")
                 rate.sleep()
         cv2.destroyAllWindows()
-if __name__ == "__main__":    
+
+
+if __name__ == "__main__":
     rospy.init_node('tracker_node', anonymous=True)
-    tr = tracker()
-    s_retake = rospy.Service('retake_ID', retake, tr.handler_retake)
-    s_retrack = rospy.Service('retrack_ID', retrack, tr.handler_retrack)
+    tr = Tracker()
     try:
         tr.main_track()
     except KeyboardInterrupt:
