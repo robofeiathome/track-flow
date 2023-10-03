@@ -54,15 +54,16 @@ class Tracker:
         rospy.loginfo('Ready to Track!')
 
     def get_closest_id(self, distance):
-        # print(self.bboxs)
+        # List of ids that are closer then the distance range
+        valid_ids = [] # Queria chamar de Alvaro :(
         for index, bbox in enumerate(self.bboxs):
-            # print(bbox)
             xb, yb = self.calculate_centroid(bbox)
             object_transform = self.calculate_tf(xb, yb)
-            # print (object_transform)
             if object_transform[1] < distance:
-                return int(self.ids[index])
-        return 0
+                valid_ids.append(int(self.ids[index]))
+                
+        return min(valid_ids) if valid_ids else 0
+
 
     # This service retake the id, changing it to the close enough person
     def handler_get_closest_id(self, req):
