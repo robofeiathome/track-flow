@@ -18,13 +18,12 @@ import traceback
 class Tracker:
     def __init__(self) -> None:
         self.model = YOLO('yolov8n.pt')
-        image_topic = "/xtion/image_raw"
+        image_topic = "/camera/rgb/image_raw"
         self.id_to_follow = 1
         self.last_centroid_x = None
         self._global_frame = "map"
         self._current_image = None
-        self.time = rospy.Time.now()
-        point_cloud_topic = "/xtion/depth/points"
+        point_cloud_topic = "/camera/depth/points"
         self.publish_tf = None
         self._tf_listener = tf.TransformListener()
         self._current_pc = None
@@ -65,7 +64,7 @@ class Tracker:
                 return int(self.ids[index])
         return 0
 
-    # These services retake the id, changing it to the close enough person
+    # This service retake the id, changing it to the close enough person
     def handler_get_closest_id(self, req):
         response = self.get_closest_id(req.dist)
         return response
@@ -93,7 +92,9 @@ class Tracker:
 
     def calculate_tf(self, current_centroid_x, current_centroid_y):
         point_z, point_x, point_y = None, None, None
-        (trans, _) = self._tf_listener.lookupTransform('/' + self._global_frame, '/xtion', rospy.Time(0))
+        self._tf_listener.waitForTransform('/' + self._global_frame, 'camera_link', rospy.Time(0), rospy.Duration(4.0))
+        (trans, rot) = self._tf_listener.lookupTransform('/' + self._global_frame, 'camera_link', rospy.Time(0))
+        print(trans)
         if self._current_pc is None:
             rospy.loginfo('No point cloud')
         pc_list = list(
@@ -104,20 +105,22 @@ class Tracker:
         if len(pc_list) > 0:
             self.publish_tf = True
             tf_id = 'person_follow'
-            point_z, point_x, point_y = pc_list[0]
+            point_x, point_y, point_z = pc_list[0]
         if point_z is not None and point_x is not None and point_y is not None:
-            object_tf = [point_y, -point_z, point_x]
-            frame = 'xtion'
+            object_tf = [point_z, -point_x, -point_y] # sempre retornar x,z,-y no robo real graças a algum membro passado.
+            #object_tf = [point_x, point_y, point_z]
+            frame = 'camera_link'
             if self._global_frame is not None:
-                object_tf = np.array(trans) + object_tf
+                rot_matrix = tf.transformations.quaternion_matrix(rot)[:3, :3]
+                rotated_object_tf = np.dot(rot_matrix, object_tf)
+                object_tf = np.array(trans) + rotated_object_tf
                 frame = self._global_frame
             if object_tf is not None:
                 self._tfpub.sendTransform((object_tf),
-                                          tf.transformations.quaternion_from_euler(0, 0, 0),
-                                          self.time,
+                                          rot,
+                                          rospy.Time.now(),
                                           tf_id,
                                           frame)
-                self.time = self.time + rospy.Duration(1e-3)
             trans, _ = self.read_published_tf(tf_id, frame)
             if trans:
                 point_msg = PointStamped()
