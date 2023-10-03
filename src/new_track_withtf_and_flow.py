@@ -54,13 +54,13 @@ class Tracker:
         rospy.loginfo('Ready to Track!')
 
     def get_closest_id(self, distance):
-        print(self.bboxs)
+        # print(self.bboxs)
         for index, bbox in enumerate(self.bboxs):
-            print(bbox)
+            # print(bbox)
             xb, yb = self.calculate_centroid(bbox)
             object_transform = self.calculate_tf(xb, yb)
-            print(object_transform)
-            if object_transform.point.x < distance:
+            # print (object_transform)
+            if object_transform[1] < distance:
                 return int(self.ids[index])
         return 0
 
@@ -94,7 +94,6 @@ class Tracker:
         point_z, point_x, point_y = None, None, None
         self._tf_listener.waitForTransform('/' + self._global_frame, 'camera_link', rospy.Time(0), rospy.Duration(4.0))
         (trans, rot) = self._tf_listener.lookupTransform('/' + self._global_frame, 'camera_link', rospy.Time(0))
-        print(trans)
         if self._current_pc is None:
             rospy.loginfo('No point cloud')
         pc_list = list(
@@ -130,7 +129,7 @@ class Tracker:
                 point_msg.point.y = trans[1]
                 point_msg.point.z = 0.0
                 self._person_to_follow_pub.publish(point_msg)
-                return point_msg
+                return object_tf
 
     def calculate_centroid(self, bbox):
         x_min, y_min, x_max, y_max = bbox
