@@ -56,27 +56,42 @@ class Tracker:
     def get_closest_id(self, distance):
         id_positions = []
         valid_ids = [] 
+
         print(self.bboxs)
-        if self.bboxs: 
-            for ix, bbox in enumerate(self.bboxs):
-                xb, yb = self.calculate_centroid(bbox)
-                object_transform = self.calculate_tf(xb, yb)
-                print(object_transform)
 
-                # Ensure the value is positive
-                object_transform_distance = abs(object_transform[0])
+        if not self.bboxs:
+            return 0
 
-                if object_transform_distance < distance:
-                    id_positions.append(object_transform_distance)
-                    valid_ids.append(int(self.ids[ix]))
+        for ix, bbox in enumerate(self.bboxs):
+            xb, yb = self.calculate_centroid(bbox)
 
-            if valid_ids: 
-                print(id_positions)
-                print(valid_ids)
-                i = id_positions.index(min(id_positions))                
-                return valid_ids[i]
+            if xb is None or yb is None:
+                return 0
+
+            object_transform = self.calculate_tf(xb, yb)
+            print(object_transform)
+
+            if object_transform is None or len(object_transform) < 1:
+                return 0
+
+            # Ensure the value is positive
+            object_transform_distance = abs(object_transform[0])
+            print(object_transform_distance)
+
+            if object_transform_distance < distance:
+                if ix >= len(self.ids) or self.ids[ix] is None:
+                    return 0
+                id_positions.append(object_transform_distance)
+                valid_ids.append(int(self.ids[ix]))
+
+        if valid_ids: 
+            print(id_positions)
+            print(valid_ids)
+            i = id_positions.index(min(id_positions))                
+            return valid_ids[i]
 
         return 0
+
 
 
 
@@ -125,6 +140,7 @@ class Tracker:
         if point_z is not None and point_x is not None and point_y is not None:
             object_tf = [point_z, -point_x, -point_y] # sempre retornar x,z,-y no robo real graças a algum membro passado.
             #object_tf = [point_x, point_y, point_z]
+            closest_estimate = object_tf
             frame = 'camera_link'
             if self._global_frame is not None:
                 rot_matrix = tf.transformations.quaternion_matrix(rot)[:3, :3]
@@ -146,7 +162,7 @@ class Tracker:
                 point_msg.point.y = trans[1]
                 point_msg.point.z = 0.0
                 self._person_to_follow_pub.publish(point_msg)
-                return object_tf
+                return closest_estimate
 
     def calculate_centroid(self, bbox):
         x_min, y_min, x_max, y_max = bbox
