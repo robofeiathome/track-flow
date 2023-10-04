@@ -159,6 +159,8 @@ class Tracker:
         frame_width = 640
         rate = rospy.Rate(30)  # 30 Hz or 30 fps
         while not rospy.is_shutdown():
+            self.bboxs = []
+            self.ids = []
             if self._current_image is not None:
 
                 small_frame = self._bridge.imgmsg_to_cv2(self._current_image, desired_encoding='bgr8')
@@ -168,9 +170,11 @@ class Tracker:
                 for r in results:
                     if hasattr(r, 'boxes') and r.boxes and hasattr(r.boxes, 'id') and r.boxes.id is not None:
                         ids = r.boxes.id.tolist()
-                        self.ids = ids
                         bbox_coords_list = r.boxes.xyxy.tolist()
-                        self.bboxs = bbox_coords_list
+                        if self.person_detected:
+                            self.bboxs = bbox_coords_list
+                            self.ids = ids
+
 
                         for detected_id, bbox_coords in zip(ids, bbox_coords_list):
                             if detected_id == self.id_to_follow:
