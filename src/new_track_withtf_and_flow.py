@@ -54,15 +54,31 @@ class Tracker:
         rospy.loginfo('Ready to Track!')
 
     def get_closest_id(self, distance):
-        # List of ids that are closer then the distance range
-        valid_ids = [] # Queria chamar de Alvaro :(
-        for index, bbox in enumerate(self.bboxs):
-            xb, yb = self.calculate_centroid(bbox)
-            object_transform = self.calculate_tf(xb, yb)
-            if object_transform[1] < distance:
-                valid_ids.append(int(self.ids[index]))
-                
-        return min(valid_ids) if valid_ids else 0
+        id_positions = []
+        valid_ids = [] 
+        print(self.bboxs)
+        if self.bboxs: 
+            for ix, bbox in enumerate(self.bboxs):
+                xb, yb = self.calculate_centroid(bbox)
+                object_transform = self.calculate_tf(xb, yb)
+                print(object_transform)
+
+                # Ensure the value is positive
+                object_transform_distance = abs(object_transform[0])
+
+                if object_transform_distance < distance:
+                    id_positions.append(object_transform_distance)
+                    valid_ids.append(int(self.ids[ix]))
+
+            if valid_ids: 
+                print(id_positions)
+                print(valid_ids)
+                i = id_positions.index(min(id_positions))                
+                return valid_ids[i]
+
+        return 0
+
+
 
 
     # This service retake the id, changing it to the close enough person
@@ -159,8 +175,9 @@ class Tracker:
         frame_width = 640
         rate = rospy.Rate(30)  # 30 Hz or 30 fps
         while not rospy.is_shutdown():
-            self.bboxs = []
-            self.ids = []
+            if not self.person_detected:
+                self.bboxs = []
+                self.ids = []
             if self._current_image is not None:
 
                 small_frame = self._bridge.imgmsg_to_cv2(self._current_image, desired_encoding='bgr8')
@@ -171,11 +188,8 @@ class Tracker:
                     if hasattr(r, 'boxes') and r.boxes and hasattr(r.boxes, 'id') and r.boxes.id is not None:
                         ids = r.boxes.id.tolist()
                         bbox_coords_list = r.boxes.xyxy.tolist()
-                        if self.person_detected:
-                            self.bboxs = bbox_coords_list
-                            self.ids = ids
-
-
+                        self.bboxs = bbox_coords_list
+                        self.ids = ids
                         for detected_id, bbox_coords in zip(ids, bbox_coords_list):
                             if detected_id == self.id_to_follow:
                                 self.person_detected = True
