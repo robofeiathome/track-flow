@@ -17,7 +17,7 @@ import traceback
 
 class Tracker:
     def __init__(self) -> None:
-        self.model = YOLO('yolov8n.pt')
+        self.model = YOLO('yolov8s.pt')
         image_topic = "/camera/rgb/image_raw"
         self.id_to_follow = 1
         self.last_centroid_x = None
@@ -57,8 +57,6 @@ class Tracker:
         id_positions = []
         valid_ids = [] 
 
-        print(self.bboxs)
-
         if not self.bboxs:
             return 0
 
@@ -69,14 +67,12 @@ class Tracker:
                 return 0
 
             object_transform = self.calculate_tf(xb, yb)
-            print(object_transform)
 
             if object_transform is None or len(object_transform) < 1:
                 return 0
 
             # Ensure the value is positive
             object_transform_distance = abs(object_transform[0])
-            print(object_transform_distance)
 
             if object_transform_distance < distance:
                 if ix >= len(self.ids) or self.ids[ix] is None:
@@ -85,8 +81,6 @@ class Tracker:
                 valid_ids.append(int(self.ids[ix]))
 
         if valid_ids: 
-            print(id_positions)
-            print(valid_ids)
             i = id_positions.index(min(id_positions))                
             return valid_ids[i]
 
