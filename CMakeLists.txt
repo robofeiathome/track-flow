@@ -58,13 +58,15 @@ add_message_files(
   PersonCoordinates.msg
 )
 
-## Generate services in the 'srv' folder
-# add_service_files(
-#   DIRECTORY 
-#   srv
-#   FILES
+# Generate services in the 'srv' folder
+add_service_files(
+  DIRECTORY 
+  srv
+  FILES
+  get_closest_id.srv
+  set_id.srv
   
-# )
+)
 
 ## Generate actions in the 'action' folder
 # add_action_files(
