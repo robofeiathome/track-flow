@@ -11,6 +11,8 @@ from sensor_msgs.msg import Image, PointCloud2
 from geometry_msgs.msg import PointStamped
 from hera_tracker.msg import riskanddirection
 from hera_tracker.srv import get_closest_id, set_id
+from hera_control.srv import Joint_service
+from hera_control.msg import Joint_Goal
 from std_msgs.msg import Int32, Bool
 import traceback
 
@@ -18,7 +20,7 @@ import traceback
 class Tracker:
     def __init__(self) -> None:
         self.model = YOLO('yolov8s.pt')
-        image_topic = "/camera/rgb/image_raw"
+        image_topic = "/camera/color/image_raw"
         self.id_to_follow = 1
         self.last_centroid_x = None
         self._global_frame = "map"
@@ -36,6 +38,8 @@ class Tracker:
 
         self.get_closest_id_service = rospy.Service('/tracker/get_closest_id', get_closest_id, self.handler_get_closest_id)
         self.set_id_service = rospy.Service('/tracker/set_id', set_id, self.handler_set_id)
+        rospy.wait_for_service('/joint_command')
+        self.manipulator = rospy.ServiceProxy('/joint_command', Joint_service)
 
         self.person_detected = False
         self.id_detected = False
@@ -43,7 +47,7 @@ class Tracker:
         self.ids = []
         self.bboxs = []
         self.risk_matrix = [
-            [9, 8, 7], [7, 6, 5], [5, 4, 3], [2, 1, 2], [3, 4, 5], [5, 6, 7], [7, 8, 9]
+            [-8, -7, -6], [-6, -5, -4], [-4, -3, -2], [-1, 0, 1], [2, 3, 4], [4, 5, 6], [6, 7, 8]
         ]
         self._imagepub = rospy.Publisher('~objects_label', Image, queue_size=10)
         if point_cloud_topic is not None:
@@ -51,6 +55,11 @@ class Tracker:
         else:
             rospy.loginfo('No point cloud information available. Objects will not be placed in the scene.')
         self._tfpub = tf.TransformBroadcaster()
+
+        self.MOTOR_POSITION = 0.0
+        self.joint_goal = Joint_Goal()
+        self.joint_goal.id = 10
+        self.joint_goal.x = self.MOTOR_POSITION
         rospy.loginfo('Ready to Track!')
 
     def get_closest_id(self, distance):
@@ -178,12 +187,24 @@ class Tracker:
         msg = riskanddirection()
         msg.direction = direction
         msg.risk.data = risk_value
+        self.move_head(risk_value)
         self._risk_and_direction_pub.publish(msg)
         return risk_value
 
+    def move_head(self, direction):
+        if 3 < direction < 8:
+            self.MOTOR_POSITION -= 0.1
+        elif -8 < direction < -3:
+            self.MOTOR_POSITION += 0.1
+
+        self.joint_goal.x = self.MOTOR_POSITION
+
+        self.manipulator(type='', goal=self.joint_goal)
+
     def main_track(self):
-        frame_width = 640
+        frame_width = 1920
         rate = rospy.Rate(30)  # 30 Hz or 30 fps
+        self.manipulator(type='', goal=self.joint_goal)
         while not rospy.is_shutdown():
             if not self.person_detected:
                 self.bboxs = []
