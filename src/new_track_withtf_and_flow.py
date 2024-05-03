@@ -24,7 +24,7 @@ class Tracker:
         self.last_centroid_x = None
         self._global_frame = "map"
         self._current_image = None
-        point_cloud_topic = "/camera/depth/points"
+        point_cloud_topic = "/camera/depth_registered/points"
         self.publish_tf = None
         self._tf_listener = tf.TransformListener()
         self._current_pc = None
@@ -41,6 +41,7 @@ class Tracker:
 
         self.person_detected = False
         self.id_detected = False
+        self.frame_width = 1280
 
         self.ids = []
         self.bboxs = []
@@ -87,10 +88,6 @@ class Tracker:
             return valid_ids[i]
 
         return 0
-
-
-
-
 
     # This service retake the id, changing it to the close enough person
     def handler_get_closest_id(self, req):
@@ -184,9 +181,11 @@ class Tracker:
         return risk_value
 
     def main_track(self):
-        frame_width = 1920
-        rate = rospy.Rate(30)  # 30 Hz or 30 fps
+        rate = rospy.Rate(30)
+          # 30 Hz or 30 fps
+        frame_width = self.frame_width
         while not rospy.is_shutdown():
+            print(frame_width)
             if not self.person_detected:
                 self.bboxs = []
                 self.ids = []
