@@ -185,7 +185,6 @@ class Tracker:
           # 30 Hz or 30 fps
         frame_width = self.frame_width
         while not rospy.is_shutdown():
-            print(frame_width)
             if not self.person_detected:
                 self.bboxs = []
                 self.ids = []
