@@ -56,6 +56,8 @@ class HeadOrientation:
                 self.MOTOR_POSITION += 0.4
             elif -1 < c_direction < 1:
                 pass
+        else:
+            self.MOTOR_POSITION = 0.0
 
         self.joint_goal.x = self.MOTOR_POSITION
 
