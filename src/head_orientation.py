@@ -46,13 +46,13 @@ class HeadOrientation:
         print(self.person_detected)
         if self.person_detected:
             c_direction = int(direction.data)
-            if 1 < c_direction < 6 and self.MOTOR_POSITION <= 1.5:
+            if 1 < c_direction < 6 and self.MOTOR_POSITION >= -1.8:
                 self.MOTOR_POSITION -= 0.2
-            elif 6 < c_direction < 8 and self.MOTOR_POSITION <= 1.5:
+            elif 6 < c_direction < 8 and self.MOTOR_POSITION >= -1.8:
                 self.MOTOR_POSITION -= 0.4
-            elif -6 < c_direction < -1 and self.MOTOR_POSITION >= -1.5:
+            elif -6 < c_direction < -1 and self.MOTOR_POSITION <= 1.8:
                 self.MOTOR_POSITION += 0.2
-            elif -8 < c_direction < -6 and self.MOTOR_POSITION >= -1.5:
+            elif -8 < c_direction < -6 and self.MOTOR_POSITION <= 1.8:
                 self.MOTOR_POSITION += 0.4
             elif -1 < c_direction < 1:
                 pass
