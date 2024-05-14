@@ -14,8 +14,8 @@ class HeadOrientation:
         self.manipulator = rospy.ServiceProxy('/joint_command', Joint_service)
         rospy.wait_for_message('/tracker/risk_and_direction', riskanddirection)
         self.risk_direction = rospy.Subscriber('/tracker/risk_and_direction', riskanddirection, self.callback)
-        rospy.wait_for_message('/tracker/person_detected', Bool)
-        self.person_detected = rospy.Subscriber('/tracker/person_detected', Bool, self.callbackPersonDetected)
+        rospy.wait_for_message('/tracker/id_detected', Bool)
+        self.id_detected = rospy.Subscriber('/tracker/id_detected', Bool, self.callbackPersonDetected)
 
         self.direction = 0.0
         self.MOTOR_POSITION = 0.0
@@ -27,9 +27,9 @@ class HeadOrientation:
     def callbackPersonDetected(self, data):
         try:
             if data == None:
-                self.person_detected = False
+                self.id_detected = False
             else:
-                self.person_detected = data.data
+                self.id_detected = data.data
         except Exception as e:
             print(traceback.format_exc())
 
@@ -43,8 +43,8 @@ class HeadOrientation:
             print(traceback.format_exc())
 
     def move_head(self, direction):
-        print(self.person_detected)
-        if self.person_detected:
+        print(self.id_detected)
+        if self.id_detected:
             c_direction = int(direction.data)
             if 1 < c_direction < 6 and self.MOTOR_POSITION >= -1.8:
                 self.MOTOR_POSITION -= 0.2

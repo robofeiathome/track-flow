@@ -32,9 +32,9 @@ class RecoveryMode:
         rospy.wait_for_message('/tracker/risk_and_direction', riskanddirection)
         rospy.loginfo('risk_and_direction topic is ready!')
         self.risk_direction = rospy.Subscriber('/tracker/risk_and_direction', riskanddirection, self.callback)
-        rospy.wait_for_message('/tracker/person_detected', Bool)
-        rospy.loginfo('person_detected topic is ready!')
-        self.person_detected = rospy.Subscriber('/tracker/person_detected', Bool, self.callbackPersonDetected)
+        rospy.wait_for_message('/tracker/id_detected', Bool)
+        rospy.loginfo('id_detected topic is ready!')
+        self.id_detected = rospy.Subscriber('/tracker/id_detected', Bool, self.callbackPersonDetected)
 
         #Actions:
 
@@ -52,9 +52,9 @@ class RecoveryMode:
     def callbackPersonDetected(self, data):
         try:
             if data == None:
-                self.person_detected = False
+                self.id_detected = False
             else:
-                self.person_detected = data.data
+                self.id_detected = data.data
         except Exception as e:
             print(traceback.format_exc())
 
@@ -103,7 +103,7 @@ class RecoveryMode:
 
     def main(self):
         while not rospy.is_shutdown():
-            if not self.person_detected:
+            if not self.id_detected:
                 self.lookfor()
 
 
