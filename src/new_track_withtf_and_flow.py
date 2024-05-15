@@ -210,10 +210,10 @@ class Tracker:
                                 self.calculate_tf(cx, cy)
 
                                 cv2.circle(annotated_frame, centroid, 5, (0, 255, 0), -1)
-                            else:
+                            elif detected_id != self.id_to_follow:
                                 self.person_detected = True
                                 self.id_detected = False
-                    else:
+                    elif hasattr(r, 'boxes') and r.boxes and hasattr(r.boxes, 'id') and r.boxes.id is None:
                         self.person_detected = False
                         self.id_detected = False
                     self._person_detected_pub.publish(self.person_detected)

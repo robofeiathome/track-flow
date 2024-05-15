@@ -68,22 +68,24 @@ class RecoveryMode:
             print(traceback.format_exc())
 
     def lookfor(self):
+        direction = int(self.direction.data)
         try:
-            if self.direction < 0:
-                self.move_head(1.8)
-            elif self.direction > 0:
-                self.move_head(-1.8)
-            closest_id = self.get_closest_id(3).id
-            if closest_id != 0:
-                self.set_id(closest_id)
-            else:
-                if self.direction < 0:
-                    self.move('spin_left', 0.4, 1)
-
-                elif self.direction > 0:
-                    self.move('spin_right', 0.4, 1)
+            if not self.id_detected:
+                if direction < 0:
+                    self.move_head(1.5)
+                elif direction > 0:
+                    self.move_head(-1.5)
+                closest_id = self.get_closest_id(3).id
+                if closest_id != 0:
+                    self.set_id(closest_id)
                 else:
-                    pass
+                    if direction < 0:
+                        self.move('spin_left', 0.4, 1)
+
+                    elif direction > 0:
+                        self.move('spin_right', 0.4, 1)
+                    else:
+                        pass
         except Exception as e:
             print(traceback.format_exc())
 
