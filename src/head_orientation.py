@@ -63,7 +63,6 @@ class HeadOrientation:
         self.manipulator(type='', goal=self.joint_goal)
 
     def main(self):
-        self.manipulator(type='', goal=self.joint_goal)
         while not rospy.is_shutdown():
             self.move_head(self.direction)
 
