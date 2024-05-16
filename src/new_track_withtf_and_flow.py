@@ -11,7 +11,6 @@ from sensor_msgs.msg import Image, PointCloud2
 from geometry_msgs.msg import PointStamped
 from hera_tracker.msg import riskanddirection
 from hera_tracker.srv import get_closest_id, set_id
-from hera_control.srv import Joint_service
 from std_msgs.msg import Int32, Bool
 import traceback
 
@@ -37,7 +36,6 @@ class Tracker:
 
         self.get_closest_id_service = rospy.Service('/tracker/get_closest_id', get_closest_id, self.handler_get_closest_id)
         self.set_id_service = rospy.Service('/tracker/set_id', set_id, self.handler_set_id)
-        rospy.wait_for_service('/joint_command')
 
         self.person_detected = False
         self.id_detected = False
@@ -208,8 +206,8 @@ class Tracker:
                                 cx, cy = centroid
                                 self.calculate_risk(centroid, frame_width)
                                 self.calculate_tf(cx, cy)
-
                                 cv2.circle(annotated_frame, centroid, 5, (0, 255, 0), -1)
+                                break
                             elif detected_id != self.id_to_follow:
                                 self.person_detected = True
                                 self.id_detected = False
