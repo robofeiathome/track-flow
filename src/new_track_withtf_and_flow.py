@@ -46,7 +46,7 @@ class Tracker:
         self.risk_matrix = [
             [-8, -7, -6], [-6, -5, -4], [-4, -3, -2], [-1, 0, 1], [2, 3, 4], [4, 5, 6], [6, 7, 8]
         ]
-        self._imagepub = rospy.Publisher('~objects_label', Image, queue_size=10)
+        self._imagepub = rospy.Publisher('trackerImage', Image, queue_size=10)
         if point_cloud_topic is not None:
             rospy.Subscriber(point_cloud_topic, PointCloud2, self.pc_callback)
         else:
@@ -179,8 +179,7 @@ class Tracker:
         return risk_value
 
     def main_track(self):
-        rate = rospy.Rate(30)
-          # 30 Hz or 30 fps
+        rate = rospy.Rate(30)  # 30 Hz or 30 fps
         frame_width = self.frame_width
         while not rospy.is_shutdown():
             if not self.person_detected:
@@ -218,6 +217,7 @@ class Tracker:
                     self._id_detected_pub.publish(self.id_detected)
 
                 cv2.imshow("YOLOv8 Tracking", annotated_frame)
+                self._imagepub.publish(self._bridge.cv2_to_imgmsg(annotated_frame, 'bgr8'))  # Use 'bgr8' for OpenCV images
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     break
                 rate.sleep()
