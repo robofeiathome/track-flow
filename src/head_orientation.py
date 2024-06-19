@@ -22,6 +22,10 @@ class HeadOrientation:
         self.joint_goal = Joint_Goal()
         self.joint_goal.id = 10
         self.joint_goal.x = self.MOTOR_POSITION
+
+        self.assist_goal = Joint_Goal()
+        self.assist_goal.id = 9
+        self.assist_goal.x = 0.0
         rospy.loginfo('Ready to Orientate Head!')
 
     def callbackPersonDetected(self, data):
@@ -61,6 +65,8 @@ class HeadOrientation:
         self.joint_goal.x = self.MOTOR_POSITION
 
         self.manipulator(type='', goal=self.joint_goal)
+        self.manipulator(type='', goal=self.assist_goal)
+
 
     def main(self):
         while not rospy.is_shutdown():

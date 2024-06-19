@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import rospy
 import actionlib
+from hera_speech.srv import CompareImages, CompareImagesRequest
 from hera_tracker.srv import get_closest_id, set_id
 from hera_control.srv import Joint_service
 from hera_control.msg import Joint_Goal
@@ -26,6 +27,9 @@ class RecoveryMode:
         rospy.wait_for_service('/tracker/set_id')
         rospy.loginfo('set_id service is ready!')
         self.set_id = rospy.ServiceProxy('/tracker/set_id', set_id)
+        rospy.wait_for_service('/compareImages')
+        rospy.loginfo('compareImages service is ready!')
+        self.compare_images = rospy.ServiceProxy('/compareImages', CompareImages)
 
         #Messages:
 
@@ -48,6 +52,20 @@ class RecoveryMode:
         self.joint_goal.id = 10
         self.joint_goal.x = self.MOTOR_POSITION
         rospy.loginfo('Ready to Orientate Head!')
+
+
+
+    def compare_images_client(self, imgName, contexto):
+        rospy.wait_for_service('compareImages')
+        try:
+            compare_images = rospy.ServiceProxy('compareImages', CompareImages)
+            req = CompareImagesRequest()
+            req.image_names = imgName #nome da imagem a ser comparada ao frame atual(incluir .jpeg)
+            req.context = contexto
+            response = compare_images(req)
+            print("Response: ", response.message)
+        except rospy.ServiceException as e:
+            print("Service call failed: %s" % e)
 
     def callbackPersonDetected(self, data):
         try:
