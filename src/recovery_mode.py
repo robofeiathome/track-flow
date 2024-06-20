@@ -9,6 +9,7 @@ from hera_control.msg import Joint_Goal
 from hera_tracker.msg import riskanddirection
 from hera.msg import moveFeedback, moveResult, moveAction, moveGoal
 import traceback
+import ast
 from std_msgs.msg import Int32, Bool
 
 #This is a stupid implementation
@@ -87,25 +88,20 @@ class RecoveryMode:
 
     def lookfor(self):
         direction = int(self.direction.data)
-        try:
-            if not self.id_detected:
-                if direction < 0:
-                    self.move_head(1.5)
-                elif direction > 0:
-                    self.move_head(-1.5)
-                closest_id = self.get_closest_id(3).id
-                if closest_id != 0:
-                    self.set_id(closest_id)
-                else:
-                    if direction < 0:
-                        self.move('spin_left', 0.4, 1)
+        for i in range(3):
+            try:
+                if not self.id_detected:
+                    isonTheFrame = self.compare_images_client('person_follow', 'sua tarefa e compara as duas imagens e determinar se a pessoa da segunda imagem se encontra na primeira imagem, seja muito cauteloso, use detalhes da roupa, acessorios, cor da pele, cabelo, etc. O robo esta performando uma tarefa de carry my luggage, por favor, ajude-o a encontrar a pessoa que ele deve seguir. Retorne para mim apenas "(ID)"(onde id e a id que aparece para a pessoa na imagem) ou "nao".')
+                    try:
+                        newID = ast.literal_eval(isonTheFrame)
+                    except:
+                        newID = False
+                    if newID:
+                        return newID
+            except Exception as e:
+                print(traceback.format_exc())
 
-                    elif direction > 0:
-                        self.move('spin_right', 0.4, 1)
-                    else:
-                        pass
-        except Exception as e:
-            print(traceback.format_exc())
+        return False
 
     
     def move(self, command: str, velocity: float = 0.2, duration: float = 0.0):
@@ -124,7 +120,14 @@ class RecoveryMode:
     def main(self):
         while not rospy.is_shutdown():
             if not self.id_detected:
-                self.lookfor()
+                newID = self.lookfor()
+                if newID:
+                    self.set_id(newID)
+                else:
+                    if self.direction>0:
+                        self.move_head(-1.5)
+                    else:
+                        self.move_head(1.5)
 
 
 if __name__ == "__main__":
