@@ -91,12 +91,12 @@ class RecoveryMode:
         for i in range(3):
             try:
                 if not self.id_detected:
-                    isonTheFrame = self.compare_images_client('person_follow', 'sua tarefa e compara as duas imagens e determinar se a pessoa da segunda imagem se encontra na primeira imagem, seja muito cauteloso, use detalhes da roupa, acessorios, cor da pele, cabelo, etc. O robo esta performando uma tarefa de carry my luggage, por favor, ajude-o a encontrar a pessoa que ele deve seguir. Retorne para mim apenas "(ID)"(onde id e a id que aparece para a pessoa na imagem) ou "nao".')
+                    isonTheFrame = self.compare_images_client('person_follow.jpg', 'Your task is to compare the two images and see if the person on the center of the second image is on the first one (disconsider the id write on the second one, and if the person is in the image return to me the id  with no punctuations and if you cant determine the id return None. If there is no one in the first the person you are loking are not into it so return None as well. Use clothes features and body features, and if it is the same person return the id.Attention: Make sure is the same person, use skin color, hair color, clothes color and type, body features, clothes features to determine, be extremely precise with it as you will set the id for the person that the robot needs to follow (the images are taken with minutes of diference, the person will be using the same clothes). Return to me just the ID or None, bowth with no punctuations please. BE EXTREMELY PRECISE WITH THE COMPARISION IF YOU DO NOT FIND THE RIGHT PERSON JUST RETURN None')
                     try:
                         newID = ast.literal_eval(isonTheFrame)
                     except:
                         newID = False
-                    if newID:
+                    if newID is not None:
                         return newID
             except Exception as e:
                 print(traceback.format_exc())
@@ -124,7 +124,7 @@ class RecoveryMode:
                 if newID:
                     self.set_id(newID)
                 else:
-                    if self.direction>0:
+                    if int(self.direction.data)>(0):
                         self.move_head(-1.5)
                     else:
                         self.move_head(1.5)
