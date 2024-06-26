@@ -52,6 +52,7 @@ class RecoveryMode:
         self.joint_goal = Joint_Goal()
         self.joint_goal.id = 10
         self.joint_goal.x = self.MOTOR_POSITION
+        self.poses = [0.0, 0.5, -0.5, 1.0, -1.0, 1.5, -1.5]
         rospy.loginfo('Ready to Orientate Head!')
 
 
@@ -88,10 +89,10 @@ class RecoveryMode:
 
     def lookfor(self):
         direction = int(self.direction.data)
-        for i in range(3):
+        for i in range(2):
             try:
                 if not self.id_detected:
-                    isonTheFrame = self.compare_images_client('person_follow.jpg', 'Your task is to compare the two images and see if the person on the center of the second image is on the first one (disconsider the id write on the second one, and if the person is in the image return to me the id  with no punctuations and if you cant determine the id return None. If there is no one in the first the person you are loking are not into it so return None as well. Use clothes features and body features, and if it is the same person return the id.Attention: Make sure is the same person, use skin color, hair color, clothes color and type, body features, clothes features to determine, be extremely precise with it as you will set the id for the person that the robot needs to follow (the images are taken with minutes of diference, the person will be using the same clothes). Return to me just the ID or None, bowth with no punctuations please. BE EXTREMELY PRECISE WITH THE COMPARISION IF YOU DO NOT FIND THE RIGHT PERSON JUST RETURN None')
+                    isonTheFrame = self.compare_images_client('person_follow.jpg', 'Your task is to compare the two images and see if the person on the center of the second image is on the first one (disconsider the id write on the second one, and if the person is in the image return to me the id  with no punctuations and if you cant determine the id return False. If there is no one in the first the person you are loking are not into it so return False as well. Use clothes features and body features, and if it is the same person return the id.Attention: Make sure is the same person, use skin color, hair color, clothes color and type, body features, clothes features to determine, be extremely precise with it as you will set the id for the person that the robot needs to follow (the images are taken with minutes of diference, the person will be using the same clothes). Return to me just the ID or False, bowth with no punctuations please. BE EXTREMELY PRECISE WITH THE COMPARISION IF YOU DO NOT FIND THE RIGHT PERSON JUST RETURN False')
                     try:
                         newID = ast.literal_eval(isonTheFrame)
                     except:
@@ -119,15 +120,13 @@ class RecoveryMode:
 
     def main(self):
         while not rospy.is_shutdown():
-            if not self.id_detected:
-                newID = self.lookfor()
-                if newID:
-                    self.set_id(newID)
-                else:
-                    if int(self.direction.data)>(0):
-                        self.move_head(-1.5)
+            for i in range (len(self.poses)):
+                if not self.id_detected:
+                    newID = self.lookfor()
+                    if newID:
+                        self.set_id(newID)
                     else:
-                        self.move_head(1.5)
+                        self.move_head(self.poses[i])
 
 
 if __name__ == "__main__":
