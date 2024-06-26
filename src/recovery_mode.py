@@ -12,6 +12,8 @@ import traceback
 import ast
 from std_msgs.msg import Int32, Bool
 
+import rospkg
+
 directory = rospkg.RosPack().get_path('tasks')
 sys.path.append(directory + '/tasks/methods')
 
