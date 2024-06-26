@@ -47,6 +47,9 @@ class RecoveryMode:
         # rospy.wait_for_message('/tracker/risk_and_direction', riskanddirection)
         # rospy.loginfo('risk_and_direction topic is ready!')
         # self.risk_direction = rospy.Subscriber('/tracker/risk_and_direction', riskanddirection, self.callback)
+        rospy.wait_for_message('/startOrientation', Bool)
+        rospy.loginfo('startOrientation topic is ready!')
+        self.start_orientation = rospy.Subscriber('/startOrientation', Bool, self.callbackStartOrientation)
         rospy.wait_for_message('/tracker/id_detected', Bool)
         rospy.loginfo('id_detected topic is ready!')
         self.id_detected = rospy.Subscriber('/tracker/id_detected', Bool, self.callbackPersonDetected)
@@ -138,9 +141,17 @@ class RecoveryMode:
 
         self.manipulator(type='', goal=self.joint_goal)
 
-    def main(self):
-        while not rospy.is_shutdown():
-            if not self.id_detected:
+    def callbackStartOrientation(self, data):
+        try:
+            if data == None:
+                self.start_orientation = False
+            else:
+                self.start_orientation = data.data
+        except Exception as e:
+            print(traceback.format_exc())
+
+    def orientate(self):
+        if not self.id_detected:
                 self.speech.talk('I lost you, can you please wait for me to find you?')
                 for i in range (len(self.poses)):
                     newID = self.lookfor()
@@ -152,7 +163,10 @@ class RecoveryMode:
                         self.move_head(self.poses[i])
                         rospy.sleep(3)
 
-
+    def main(self):
+        while not rospy.is_shutdown():
+            if self.start_orientation == True:
+                self.orientate()
 
 if __name__ == "__main__":
     rospy.init_node('RecoveryNode', anonymous=True)
