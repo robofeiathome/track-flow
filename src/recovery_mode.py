@@ -12,7 +12,13 @@ import traceback
 import ast
 from std_msgs.msg import Int32, Bool
 
-#This is a stupid implementation
+directory = rospkg.RosPack().get_path('tasks')
+sys.path.append(directory + '/tasks/methods')
+
+# import General as General
+# import Speech as Speech
+import WhisperSpeech as WhisperSpeech
+
 
 class RecoveryMode:
     def __init__(self) -> None:
@@ -47,6 +53,7 @@ class RecoveryMode:
 
         #Variables:
     
+        self.speech = WhisperSpeech.WhisperSpeech()
         self.direction = 0.0
         self.MOTOR_POSITION = 0.0
         self.joint_goal = Joint_Goal()
@@ -120,8 +127,9 @@ class RecoveryMode:
 
     def main(self):
         while not rospy.is_shutdown():
-            for i in range (len(self.poses)):
-                if not self.id_detected:
+            if not self.id_detected:
+                self.speech.talk('I lost you, can you please wait for me to find you?')
+                for i in range (len(self.poses)):
                     newID = self.lookfor()
                     if newID:
                         self.set_id(newID)
