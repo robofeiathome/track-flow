@@ -11,6 +11,8 @@ from hera.msg import moveFeedback, moveResult, moveAction, moveGoal
 import traceback
 import ast
 from std_msgs.msg import Int32, Bool
+import sys
+import re
 
 import rospkg
 
@@ -42,9 +44,9 @@ class RecoveryMode:
 
         #Messages:
 
-        rospy.wait_for_message('/tracker/risk_and_direction', riskanddirection)
-        rospy.loginfo('risk_and_direction topic is ready!')
-        self.risk_direction = rospy.Subscriber('/tracker/risk_and_direction', riskanddirection, self.callback)
+        # rospy.wait_for_message('/tracker/risk_and_direction', riskanddirection)
+        # rospy.loginfo('risk_and_direction topic is ready!')
+        # self.risk_direction = rospy.Subscriber('/tracker/risk_and_direction', riskanddirection, self.callback)
         rospy.wait_for_message('/tracker/id_detected', Bool)
         rospy.loginfo('id_detected topic is ready!')
         self.id_detected = rospy.Subscriber('/tracker/id_detected', Bool, self.callbackPersonDetected)
@@ -75,6 +77,7 @@ class RecoveryMode:
             req.context = contexto
             response = compare_images(req)
             print("Response: ", response.message)
+            return response.message
         except rospy.ServiceException as e:
             print("Service call failed: %s" % e)
 
@@ -97,19 +100,27 @@ class RecoveryMode:
             print(traceback.format_exc())
 
     def lookfor(self):
-        direction = int(self.direction.data)
-        for i in range(2):
+        try:
+            isonTheFrame = self.compare_images_client('person_follow.jpg', 'Your task is to compare the two images and see if the person on the center of the second image is on the first one (disconsider the id write on the second one, and if the person is in the image return to me the id  with no punctuations and if you cant determine the id return False. If there is no one in the first the person you are loking are not into it so return False as well. Use clothes features and body features, and if it is the same person return the id.Attention: Make sure is the same person, use skin color, hair color, clothes color and type, body features, clothes features to determine, be extremely precise with it as you will set the id for the person that the robot needs to follow (the images are taken with minutes of diference, the person will be using the same clothes). Return to me just the ID or False, bowth with no punctuations please. BE EXTREMELY PRECISE WITH THE COMPARISION IF YOU DO NOT FIND THE RIGHT PERSON JUST RETURN False')
+            print(isonTheFrame, type(isonTheFrame))
             try:
-                if not self.id_detected:
-                    isonTheFrame = self.compare_images_client('person_follow.jpg', 'Your task is to compare the two images and see if the person on the center of the second image is on the first one (disconsider the id write on the second one, and if the person is in the image return to me the id  with no punctuations and if you cant determine the id return False. If there is no one in the first the person you are loking are not into it so return False as well. Use clothes features and body features, and if it is the same person return the id.Attention: Make sure is the same person, use skin color, hair color, clothes color and type, body features, clothes features to determine, be extremely precise with it as you will set the id for the person that the robot needs to follow (the images are taken with minutes of diference, the person will be using the same clothes). Return to me just the ID or False, bowth with no punctuations please. BE EXTREMELY PRECISE WITH THE COMPARISION IF YOU DO NOT FIND THE RIGHT PERSON JUST RETURN False')
-                    try:
-                        newID = ast.literal_eval(isonTheFrame)
-                    except:
+                # Use a regular expression to find the ID or "False"
+                match = re.search(r'\d+|False', isonTheFrame)
+                if match:
+                    result = match.group(0)
+                    if result == 'False':
                         newID = False
-                    if newID is not None:
-                        return newID
+                    else:
+                        newID = int(result)
+                else:
+                    newID = False
             except Exception as e:
                 print(traceback.format_exc())
+                newID = False
+            if newID is not None:
+                return newID
+        except Exception as e:
+            print(traceback.format_exc())
 
         return False
 
@@ -133,10 +144,14 @@ class RecoveryMode:
                 self.speech.talk('I lost you, can you please wait for me to find you?')
                 for i in range (len(self.poses)):
                     newID = self.lookfor()
+                    print(newID, type(newID))
                     if newID:
                         self.set_id(newID)
+                        break
                     else:
                         self.move_head(self.poses[i])
+                        rospy.sleep(3)
+
 
 
 if __name__ == "__main__":
