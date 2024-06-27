@@ -66,7 +66,7 @@ class RecoveryMode:
         self.joint_goal = Joint_Goal()
         self.joint_goal.id = 10
         self.joint_goal.x = self.MOTOR_POSITION
-        self.poses = [0.0, 0.5, -0.5, 1.0, -1.0, 1.5, -1.5]
+        self.poses = [0.0, 0.0, 0.0, 0.5, -0.5, 1.0, -1.0, 1.5, -1.5]
         rospy.loginfo('Ready to Orientate Head!')
 
 
@@ -154,13 +154,16 @@ class RecoveryMode:
         if not self.id_detected:
                 self.speech.talk('I lost you, can you please wait for me to find you?')
                 for i in range (len(self.poses)):
+                    self.move_head(self.poses[i])
                     newID = self.lookfor()
                     print(newID, type(newID))
+                    rospy.sleep(2)
                     if newID:
                         self.set_id(newID)
+                        self.speech.talk('I found you! I will follow you now!')
+                        self.id_detected = True
                         break
                     else:
-                        self.move_head(self.poses[i])
                         rospy.sleep(3)
 
     def main(self):
