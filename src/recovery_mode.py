@@ -54,6 +54,8 @@ class RecoveryMode:
         rospy.loginfo('id_detected topic is ready!')
         self.id_detected = rospy.Subscriber('/tracker/id_detected', Bool, self.callbackPersonDetected)
         self._recovery_status_pub = rospy.Subscriber('/recovery_status', Bool, queue_size=10)
+        self._risk_and_direction_pub = rospy.Publisher('/tracker/risk_and_direction', riskanddirection, queue_size=10)
+
 
         #Actions:
 
@@ -69,6 +71,9 @@ class RecoveryMode:
         self.joint_goal.x = self.MOTOR_POSITION
         self.poses = [0.0, 0.0, 0.0, 0.5, -0.5, 1.0, -1.0, 1.5, -1.5]
         rospy.loginfo('Ready to Orientate Head!')
+        self.msg = riskanddirection()
+        self.msg.risk.data = 0.0
+        self.msg.direction = "STATIONARY"
 
 
 
@@ -154,6 +159,7 @@ class RecoveryMode:
     def orientate(self):
         if not self.id_detected:
                 self._recovery_status_pub.publish(True)
+                self._risk_and_direction_pub.publish(self.msg)
                 self.speech.talk('I lost you, can you please wait for me to find you?')
                 for i in range (len(self.poses)):
                     self.move_head(self.poses[i])
