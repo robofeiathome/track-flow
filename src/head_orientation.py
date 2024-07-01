@@ -18,6 +18,8 @@ class HeadOrientation:
         self.id_detected = rospy.Subscriber('/tracker/id_detected', Bool, self.callbackPersonDetected)
         rospy.wait_for_message('/startOrientation', Bool)
         self.start_orientation = rospy.Subscriber('/startOrientation', Bool, self.callbackStartOrientation)
+        rospy.wait_for_message('/recovery_status', Bool)
+        self.recovery_status = rospy.Subscriber('/recovery_status', Bool, self.callbackRecoveryStatus)
 
         self.direction = 0.0
         self.MOTOR_POSITION = 0.0
@@ -36,6 +38,15 @@ class HeadOrientation:
                 self.id_detected = False
             else:
                 self.id_detected = data.data
+        except Exception as e:
+            print(traceback.format_exc())
+
+    def callbackRecoveryStatus(self, data):
+        try:
+            if data == None:
+                self.recovery_status = False
+            else:
+                self.recovery_status = data.data
         except Exception as e:
             print(traceback.format_exc())
 
@@ -81,7 +92,7 @@ class HeadOrientation:
 
     def main(self):
         while not rospy.is_shutdown():
-            if self.start_orientation == True:
+            if self.start_orientation == True and self.recovery_status == False:
                 self.move_head(self.direction)
 
 

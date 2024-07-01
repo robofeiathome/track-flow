@@ -53,6 +53,7 @@ class RecoveryMode:
         rospy.wait_for_message('/tracker/id_detected', Bool)
         rospy.loginfo('id_detected topic is ready!')
         self.id_detected = rospy.Subscriber('/tracker/id_detected', Bool, self.callbackPersonDetected)
+        self._recovery_status_pub = rospy.Subscriber('/recovery_status', Bool, queue_size=10)
 
         #Actions:
 
@@ -152,6 +153,7 @@ class RecoveryMode:
 
     def orientate(self):
         if not self.id_detected:
+                self._recovery_status_pub.publish(True)
                 self.speech.talk('I lost you, can you please wait for me to find you?')
                 for i in range (len(self.poses)):
                     self.move_head(self.poses[i])
@@ -165,6 +167,8 @@ class RecoveryMode:
                         break
                     else:
                         rospy.sleep(3)
+        else:
+            self._recovery_status_pub.publish(False)
 
     def main(self):
         while not rospy.is_shutdown():
