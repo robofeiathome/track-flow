@@ -92,7 +92,7 @@ class HeadOrientation:
 
     def main(self):
         while not rospy.is_shutdown():
-            if self.start_orientation == True and self.recovery_status == False:
+            if self.start_orientation == True and (self.recovery_status == False or self.recovery_status == None):
                 self.move_head(self.direction)
 
 

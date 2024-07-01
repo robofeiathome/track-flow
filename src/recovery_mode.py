@@ -53,7 +53,7 @@ class RecoveryMode:
         rospy.wait_for_message('/tracker/id_detected', Bool)
         rospy.loginfo('id_detected topic is ready!')
         self.id_detected = rospy.Subscriber('/tracker/id_detected', Bool, self.callbackPersonDetected)
-        self._recovery_status_pub = rospy.Subscriber('/recovery_status', Bool, queue_size=10)
+        self._recovery_status_pub = rospy.Publisher('/recovery_status', Bool, queue_size=10)
         self._risk_and_direction_pub = rospy.Publisher('/tracker/risk_and_direction', riskanddirection, queue_size=10)
 
 
@@ -69,10 +69,10 @@ class RecoveryMode:
         self.joint_goal = Joint_Goal()
         self.joint_goal.id = 10
         self.joint_goal.x = self.MOTOR_POSITION
-        self.poses = [0.0, 0.0, 0.0, 0.5, -0.5, 1.0, -1.0, 1.5, -1.5]
+        self.poses = [0.0, 0.0, 0.5, -0.5, 1.0, -1.0, 1.5, -1.5]
         rospy.loginfo('Ready to Orientate Head!')
         self.msg = riskanddirection()
-        self.msg.risk.data = 0.0
+        self.msg.risk.data = 0
         self.msg.direction = "STATIONARY"
 
 
@@ -111,7 +111,6 @@ class RecoveryMode:
     def lookfor(self):
         try:
             isonTheFrame = self.compare_images_client('person_follow.jpg', 'Your task is to compare the two images and see if the person on the center of the second image is on the first one (disconsider the id write on the second one, and if the person is in the image return to me the id  with no punctuations and if you cant determine the id return False. If there is no one in the first the person you are loking are not into it so return False as well. Use clothes features and body features, and if it is the same person return the id.Attention: Make sure is the same person, use skin color, hair color, clothes color and type, body features, clothes features to determine, be extremely precise with it as you will set the id for the person that the robot needs to follow (the images are taken with minutes of diference, the person will be using the same clothes). Return to me just the ID or False, bowth with no punctuations please. BE EXTREMELY PRECISE WITH THE COMPARISION IF YOU DO NOT FIND THE RIGHT PERSON JUST RETURN False')
-            print(isonTheFrame, type(isonTheFrame))
             try:
                 # Use a regular expression to find the ID or "False"
                 match = re.search(r'\d+|False', isonTheFrame)
@@ -158,21 +157,21 @@ class RecoveryMode:
 
     def orientate(self):
         if not self.id_detected:
-                self._recovery_status_pub.publish(True)
-                self._risk_and_direction_pub.publish(self.msg)
-                self.speech.talk('I lost you, can you please wait for me to find you?')
-                for i in range (len(self.poses)):
-                    self.move_head(self.poses[i])
-                    newID = self.lookfor()
-                    print(newID, type(newID))
-                    rospy.sleep(2)
-                    if newID:
-                        self.set_id(newID)
-                        self.speech.talk('I found you! I will follow you now!')
-                        self.id_detected = True
-                        break
-                    else:
-                        rospy.sleep(3)
+            self._recovery_status_pub.publish(True)
+            self._risk_and_direction_pub.publish(self.msg)
+            self.speech.talk('I lost you, can you please wait for me to find you?')
+            for i in range (len(self.poses)):
+                self.move_head(self.poses[i])
+                newID = self.lookfor()
+                print(newID, type(newID))
+                if newID is not False:
+                    self.set_id(newID)
+                    self.speech.talk('I found you! I will follow you now!')
+                    self.id_detected = True
+                    self._recovery_status_pub.publish(False)
+                    break
+                else:
+                    rospy.sleep(3)
         else:
             self._recovery_status_pub.publish(False)
 
