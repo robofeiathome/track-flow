@@ -164,14 +164,14 @@ class RecoveryMode:
                 self.move_head(self.poses[i])
                 newID = self.lookfor()
                 print(newID, type(newID))
-                if newID is not False:
+                if newID:
                     self.set_id(newID)
                     self.speech.talk('I found you! I will follow you now!')
                     self.id_detected = True
                     self._recovery_status_pub.publish(False)
                     break
                 else:
-                    rospy.sleep(3)
+                    pass
         else:
             self._recovery_status_pub.publish(False)
 
