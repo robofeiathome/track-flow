@@ -47,7 +47,7 @@ class HeadOrientation:
             if data == None:
                 self.last_motor_position = 0.0
             else:
-                self.last_motor_position = float(data.data)
+                self.last_motor_position = data.data
         except Exception as e:
             print(traceback.format_exc())   
 
@@ -126,7 +126,7 @@ class HeadOrientation:
                 while self.recovery_status == True:
                     pass
                 # Setando a posição do motor para a última posição antes de entrar no modo de recuperação
-                self.MOTOR_POSITION = self.last_motor_position
+                self.MOTOR_POSITION = float(self.last_motor_position.data)
                 print (type(self.MOTOR_POSITION))
                 print ("position from head orientation:", self.MOTOR_POSITION)
 

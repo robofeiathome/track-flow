@@ -170,7 +170,7 @@ class RecoveryMode:
                     self.set_id(newID)
                     self.speech.talk('I found you! I will follow you now!')
                     self.id_detected = True
-                    self.last_motor_position_pub.publish(self.MOTOR_POSITION)
+                    self.last_motor_position_pub.publish(self.poses[i])
                     self._recovery_status_pub.publish(False)
                     break
                 else:
