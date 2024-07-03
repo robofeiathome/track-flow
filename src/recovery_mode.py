@@ -10,7 +10,7 @@ from hera_tracker.msg import riskanddirection
 from hera.msg import moveFeedback, moveResult, moveAction, moveGoal
 import traceback
 import ast
-from std_msgs.msg import Int32, Bool
+from std_msgs.msg import Int32, Bool, Float32
 import sys
 import re
 
@@ -55,6 +55,7 @@ class RecoveryMode:
         self.id_detected = rospy.Subscriber('/tracker/id_detected', Bool, self.callbackPersonDetected)
         self._recovery_status_pub = rospy.Publisher('/recovery_status', Bool, queue_size=10)
         self._risk_and_direction_pub = rospy.Publisher('/tracker/risk_and_direction', riskanddirection, queue_size=10)
+        self.last_motor_position_pub = rospy.Publisher('/last_motor_position', Float32, queue_size=10)
 
 
         #Actions:
@@ -143,6 +144,7 @@ class RecoveryMode:
     def move_head(self, direction):
 
         self.joint_goal.x = direction
+        print (self.joint_goal.x)
 
         self.manipulator(type='', goal=self.joint_goal)
 
@@ -168,6 +170,7 @@ class RecoveryMode:
                     self.set_id(newID)
                     self.speech.talk('I found you! I will follow you now!')
                     self.id_detected = True
+                    self.last_motor_position_pub.publish(self.MOTOR_POSITION)
                     self._recovery_status_pub.publish(False)
                     break
                 else:

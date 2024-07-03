@@ -5,7 +5,7 @@ from hera_control.srv import Joint_service
 from hera_control.msg import Joint_Goal
 from hera_tracker.msg import riskanddirection
 import traceback
-from std_msgs.msg import Int32, Bool
+from std_msgs.msg import Int32, Bool, Float32
 
 
 class HeadOrientation:
@@ -24,8 +24,10 @@ class HeadOrientation:
         self.id_detected = rospy.Subscriber('/tracker/id_detected', Bool, self.callbackPersonDetected)
         rospy.wait_for_message('/startOrientation', Bool)
         self.start_orientation = rospy.Subscriber('/startOrientation', Bool, self.callbackStartOrientation)
-        rospy.wait_for_message('/recovery_status', Bool)
+        #rospy.wait_for_message('/recovery_status', Bool)
         self.recovery_status = rospy.Subscriber('/recovery_status', Bool, self.callbackRecoveryStatus)
+        #rospy.wait_for_message('/last_motor_position', Float32)
+        self.last_motor_position = rospy.Subscriber('/last_motor_position', Float32, self.callbackLastMotorPosition)
 
         # Variables:
 
@@ -38,6 +40,16 @@ class HeadOrientation:
         self.assist_goal.id = 9
         self.assist_goal.x = 0.0
         rospy.loginfo('Ready to Orientate Head!')
+
+    def callbackLastMotorPosition(self, data):
+        """Callback function for the subscriber of the topic /last_motor_position"""
+        try:
+            if data == None:
+                self.last_motor_position = 0.0
+            else:
+                self.last_motor_position = float(data.data)
+        except Exception as e:
+            print(traceback.format_exc())   
 
     def callbackPersonDetected(self, data):
         """Callback function for the subscriber of the topic /tracker/id_detected"""
@@ -105,8 +117,19 @@ class HeadOrientation:
     def main(self):
         """Main function to run the node"""
         while not rospy.is_shutdown():
+            #print("start_orientation:", self.start_orientation)
+            #print("recovery_status:", self.recovery_status)
             if self.start_orientation == True and (self.recovery_status == False or self.recovery_status == None):
                 self.move_head(self.direction)
+                print ("position from head orientation:", self.MOTOR_POSITION)
+            elif self.start_orientation == True and self.recovery_status == True:
+                while self.recovery_status == True:
+                    pass
+                # Setando a posição do motor para a última posição antes de entrar no modo de recuperação
+                self.MOTOR_POSITION = self.last_motor_position
+                print (type(self.MOTOR_POSITION))
+                print ("position from head orientation:", self.MOTOR_POSITION)
+
 
 
 if __name__ == "__main__":
