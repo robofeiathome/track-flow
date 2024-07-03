@@ -71,7 +71,7 @@ class RecoveryMode:
         self.joint_goal.id = 10
         self.joint_goal.x = self.MOTOR_POSITION
         self.poses = [0.0, 0.0, 0.5, -0.5, 1.0, -1.0, 1.5, -1.5]
-        rospy.loginfo('Ready to Orientate Head!')
+        rospy.loginfo('Ready to Perform Recovery!')
         self.msg = riskanddirection()
         self.msg.risk.data = 0
         self.msg.direction = "STATIONARY"

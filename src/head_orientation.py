@@ -126,7 +126,8 @@ class HeadOrientation:
                 while self.recovery_status == True:
                     pass
                 # Setando a posição do motor para a última posição antes de entrar no modo de recuperação
-                self.MOTOR_POSITION = float(self.last_motor_position.data)
+                pose = self.last_motor_position
+                self.MOTOR_POSITION = float(pose)
                 print (type(self.MOTOR_POSITION))
                 print ("position from head orientation:", self.MOTOR_POSITION)
 
