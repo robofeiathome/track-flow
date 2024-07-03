@@ -4,4 +4,6 @@
     </node>
     <node name="head_orientation" pkg="hera_tracker" type="head_orientation.py" output="screen">
     </node>
+    <node name="recovery_mode" pkg="hera_tracker" type="recovery_mode.py" output="screen">
+    </node>
 </launch>
