@@ -117,19 +117,24 @@ class HeadOrientation:
     def main(self):
         """Main function to run the node"""
         while not rospy.is_shutdown():
-            #print("start_orientation:", self.start_orientation)
-            #print("recovery_status:", self.recovery_status)
+            print("start_orientation:", self.start_orientation)
+            print("recovery_status:", self.recovery_status)
             if self.start_orientation == True and (self.recovery_status == False or self.recovery_status == None):
                 self.move_head(self.direction)
+                print ("Orientando a cabeça...")
                 print ("position from head orientation:", self.MOTOR_POSITION)
             elif self.start_orientation == True and self.recovery_status == True:
                 while self.recovery_status == True:
+                    print("Recuperando... Orientação pausada!")
                     pass
                 # Setando a posição do motor para a última posição antes de entrar no modo de recuperação
                 pose = self.last_motor_position
                 self.MOTOR_POSITION = float(pose)
                 print (type(self.MOTOR_POSITION))
                 print ("position from head orientation:", self.MOTOR_POSITION)
+            else:
+                print ("Orientação desativada! Não ouve leitura positiva do start_orientation por hora")
+                pass
 
 
 
