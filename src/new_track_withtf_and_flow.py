@@ -10,8 +10,9 @@ from sensor_msgs import point_cloud2 as pc2
 from sensor_msgs.msg import Image, PointCloud2
 from geometry_msgs.msg import PointStamped
 from hera_tracker.msg import riskanddirection
-from hera_tracker.srv import get_closest_id, set_id
+from hera_tracker.srv import get_closest_id, set_id, get_bbox_coords, get_bbox_coordsResponse
 from std_msgs.msg import Int32, Bool
+import threading
 import traceback
 
 
@@ -34,9 +35,6 @@ class Tracker:
         self._person_detected_pub = rospy.Publisher('/tracker/person_detected', Bool, queue_size=10)
         self._id_detected_pub = rospy.Publisher('/tracker/id_detected', Bool, queue_size=10)
 
-        self.get_closest_id_service = rospy.Service('/tracker/get_closest_id', get_closest_id, self.handler_get_closest_id)
-        self.set_id_service = rospy.Service('/tracker/set_id', set_id, self.handler_set_id)
-
         self.person_detected = False
         self.id_detected = False
         self.frame_width = 1280
@@ -53,6 +51,18 @@ class Tracker:
             rospy.loginfo('No point cloud information available. Objects will not be placed in the scene.')
         self._tfpub = tf.TransformBroadcaster()
         rospy.loginfo('Ready to Track!')
+
+        # Criar e iniciar o thread do serviço
+        self.service_thread = threading.Thread(target=self.service_manager)
+        self.service_thread.daemon = True
+        self.service_thread.start()
+
+    def service_manager(self):
+        # Função para gerenciar os serviços
+        rospy.Service('/tracker/get_closest_id', get_closest_id, self.handler_get_closest_id)
+        rospy.Service('/tracker/set_id', set_id, self.handler_set_id)
+        rospy.Service('/tracker/get_bbox_coords', get_bbox_coords, self.handler_get_bbox_coords)
+        rospy.spin()
 
     def get_closest_id(self, distance):
         id_positions = []
@@ -99,6 +109,17 @@ class Tracker:
             return True
         else:
             return False
+
+    # This service returns the bbox coordinates of a specific id
+    def handler_get_bbox_coords(self, req):
+        if req.id in self.ids:
+            index = self.ids.index(req.id)
+            bbox = self.bboxs[index]
+            response = get_bbox_coordsResponse()
+            response.x_min, response.y_min, response.x_max, response.y_max = bbox
+            return response
+        else:
+            return get_bbox_coordsResponse()
 
     def read_published_tf(self, tf_id, frame):
         try:

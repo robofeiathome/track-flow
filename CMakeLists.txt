@@ -64,6 +64,7 @@ add_service_files(
   srv
   FILES
   get_closest_id.srv
+  get_bbox_coords.srv
   set_id.srv
   
 )
