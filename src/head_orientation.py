@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
 import rospy
-from hera_control.srv import Joint_service
 from hera_control.msg import Joint_Goal
 from hera_tracker.msg import riskanddirection
 import traceback
@@ -10,11 +10,6 @@ from std_msgs.msg import Int32, Bool, Float32
 
 class HeadOrientation:
     def __init__(self) -> None:
-
-        # Services:
-
-        rospy.wait_for_service('/joint_command')
-        self.manipulator = rospy.ServiceProxy('/joint_command', Joint_service)
 
         # Messages:
 
@@ -28,6 +23,8 @@ class HeadOrientation:
         self.recovery_status = rospy.Subscriber('/recovery_status', Bool, self.callbackRecoveryStatus)
         #rospy.wait_for_message('/last_motor_position', Float32)
         self.last_motor_position = rospy.Subscriber('/last_motor_position', Float32, self.callbackLastMotorPosition)
+
+        # Message do leled aqui (o publisher no caso :))
 
         # Variables:
 
@@ -108,11 +105,16 @@ class HeadOrientation:
         else:
             pass
 
-        self.joint_goal.x = self.MOTOR_POSITION
 
-        self.manipulator(type='', goal=self.joint_goal)
-        self.manipulator(type='', goal=self.assist_goal)
+        # Change the value from rads to dynax
 
+        # First pass the rad to the Delta rad (instead of -1.5 to 1.5 to 0.1 to 3.1)
+        deltaRad = self.MOTOR_POSITION + 1.51
+
+        # Now make the fucking rule of the 3 and add the variation (1024 where it starts)
+        dynax = ((deltaRad*2048)/3) + 1024 
+
+        self._headTopic_pub.publish(dynax)
 
     def main(self):
         """Main function to run the node"""
